@@ -1,0 +1,955 @@
+# Nexora - Master Product Requirements & System Architecture Document
+
+## Product Name
+
+Nexora
+
+## Product Type
+
+Multi-Tenant SaaS Business Website Platform
+
+## Vision
+
+Build the easiest platform for small businesses to create and manage professional mini websites without hiring a developer.
+
+The platform should allow business owners to:
+
+* Create a professional business website
+* Showcase products and services
+* Display prices
+* Generate leads
+* Receive WhatsApp inquiries
+* Customize branding
+* Manage subscriptions
+* Publish instantly
+
+The platform must prioritize simplicity, speed, scalability, security, and mobile-first experiences.
+
+---
+
+# Core Business Model
+
+## Free Trial
+
+Duration: 7 Days
+
+Features:
+
+* Full access during trial
+* Limited templates
+* Platform branding
+
+When trial expires:
+
+* Public website becomes inaccessible
+* Dashboard remains accessible
+* User can subscribe at any time
+* Data remains stored
+
+---
+
+## Basic Plan
+
+Price: ₦50,000/year
+
+Features:
+
+* Unlimited products
+* Unlimited services
+* Professional templates
+* SEO tools
+* Analytics dashboard
+* WhatsApp integration
+* Premium themes
+
+---
+
+## Premium Plan
+
+Price: ₦120,000/year
+
+Features:
+
+* Everything in Basic
+* Premium templates
+* Custom domain support
+* Advanced analytics
+* Team accounts
+* Priority support
+* Future AI features
+
+---
+
+# User Roles
+
+## Super Admin
+
+Permissions:
+
+* Manage users
+* Manage businesses
+* Manage subscriptions
+* Manage templates
+* View analytics
+* Suspend accounts
+
+---
+
+## Business Owner
+
+Permissions:
+
+* Manage own business
+* Manage products
+* Manage services
+* Customize website
+* Manage subscription
+* View analytics
+
+---
+
+## Staff (Future)
+
+Permissions controlled by owner.
+
+---
+
+# Technical Stack
+
+Frontend:
+
+* Next.js 15
+* React
+* TypeScript
+* TailwindCSS
+* Shadcn UI
+* Framer Motion
+
+Backend:
+
+* NestJS
+* TypeScript
+* Prisma ORM
+
+Database:
+
+* PostgreSQL
+
+Storage:
+
+* Cloudinary
+
+Cache:
+
+* Redis
+
+Queue System:
+
+* BullMQ
+
+Authentication:
+
+* JWT
+* Refresh Tokens
+* HTTP-only Cookies
+
+Payments:
+
+* Paystack
+
+Monitoring:
+
+* Sentry
+* PostHog
+
+CI/CD:
+
+* GitHub Actions
+
+---
+
+# Multi-Tenant Architecture
+
+System Type:
+Shared Database + Tenant Isolation
+
+Every business is a tenant.
+
+Every business-owned record MUST contain:
+
+* business_id
+
+Examples:
+
+Products
+Services
+Pages
+Analytics
+Media
+Subscriptions
+
+All backend queries MUST be tenant-scoped.
+
+Never trust frontend filtering.
+
+---
+
+# Core Modules
+
+## Authentication Module
+
+Features:
+
+* Signup
+* Login
+* Logout
+* Password Reset
+* Email Verification
+* Session Management
+
+Security:
+
+* Argon2 password hashing
+* Rate limiting
+* Device/session tracking
+
+---
+
+## Business Module
+
+Fields:
+
+* Name
+* Slug
+* Logo
+* Banner
+* Description
+* Phone
+* WhatsApp
+* Email
+* Address
+* Working Hours
+* Social Links
+
+Generated URL:
+
+/@businessSlug
+
+---
+
+## Website Builder Module
+
+Builder Type:
+
+Structured Section Builder
+
+Do NOT build drag-and-drop for MVP.
+
+Website Structure:
+
+Website
+→ Pages
+→ Sections
+→ Components
+
+Supported Sections:
+
+* Hero
+* About
+* Products
+* Services
+* Gallery
+* Testimonials
+* FAQ
+* Contact
+* Social Links
+* Announcement Bar
+
+Section data must be JSON-driven.
+
+---
+
+## Theme System
+
+Free Themes:
+
+* Modern White
+* Business Green
+* Portfolio Lite
+
+Premium Themes:
+
+* Luxury Gold
+* Fashion Black
+* Restaurant Red
+* Tech Startup
+* Creative Studio
+
+Theme Engine Requirements:
+
+* Dynamic color system
+* Dynamic typography
+* Dynamic spacing
+* Dynamic component styles
+
+---
+
+## Product Module
+
+Features:
+
+* Create Product
+* Edit Product
+* Delete Product
+* Categories
+* Featured Products
+* Product Galleries
+
+Fields:
+
+* Name
+* Slug
+* Description
+* Price
+* Images
+* Availability
+
+Public URLs:
+
+/@business/products
+/@business/products/productSlug
+
+---
+
+## Services Module
+
+Features:
+
+* Create Service
+* Edit Service
+* Delete Service
+
+Fields:
+
+* Name
+* Description
+* Price
+* Gallery
+
+---
+
+## Lead Generation Module
+
+Forms:
+
+* Contact Form
+* Inquiry Form
+
+Captured Fields:
+
+* Name
+* Email
+* Phone
+* Message
+
+Stored inside dashboard.
+
+---
+
+## WhatsApp Module
+
+Generate inquiry links automatically.
+
+Example:
+
+"Hello, I am interested in Product X"
+
+Track clicks in analytics.
+
+---
+
+## Subscription Module
+
+States:
+
+TRIAL
+ACTIVE
+PAST_DUE
+SUSPENDED
+EXPIRED
+
+Subscription expiry must be automated.
+
+Expired businesses should display a suspension page instead of being deleted.
+
+---
+
+## Analytics Module
+
+Track:
+
+* Page Views
+* Product Views
+* Service Views
+* WhatsApp Clicks
+* Lead Form Submissions
+
+Use Redis queues.
+
+Never write analytics directly to database on every request.
+
+---
+
+## Media Module
+
+Uploads:
+
+* Logos
+* Banners
+* Gallery Images
+* Product Images
+
+Store files in Cloudinary.
+
+Store only URLs in PostgreSQL.
+
+---
+
+# Security Requirements
+
+Mandatory:
+
+* Argon2 Password Hashing
+* CSRF Protection
+* XSS Protection
+* SQL Injection Protection
+* Input Validation
+* Rate Limiting
+* Tenant Isolation
+* Secure Cookies
+* Webhook Verification
+
+Security Headers:
+
+* CSP
+* HSTS
+* X-Frame-Options
+* X-Content-Type-Options
+
+---
+
+# Scalability Requirements
+
+Phase 1:
+0-5,000 businesses
+
+Stack:
+Next.js
+NestJS
+PostgreSQL
+Redis
+
+Phase 2:
+5,000-50,000 businesses
+
+Add:
+
+* CDN
+* Read Replicas
+* Dedicated Redis
+
+Phase 3:
+50,000+
+
+Add:
+
+* Docker
+* Kubernetes
+* Horizontal Scaling
+
+---
+
+# Database Standards
+
+Every table must contain:
+
+* id
+* created_at
+* updated_at
+* deleted_at
+
+Use soft deletes.
+
+Indexes required:
+
+* business_id
+* slug
+* subscription_status
+* email
+
+---
+
+# API Standards
+
+Architecture:
+REST API
+
+Response Format:
+
+{
+"success": true,
+"message": "Operation successful",
+"data": {}
+}
+
+---
+
+# Testing Strategy
+
+Unit Tests:
+Jest
+
+Integration Tests:
+Database
+Authentication
+Payments
+
+End-to-End Tests:
+Playwright
+
+Coverage Goal:
+80%+
+
+---
+
+# Monitoring
+
+Use:
+
+Sentry:
+
+* Error Monitoring
+* Performance Monitoring
+
+PostHog:
+
+* Product Analytics
+* User Behavior Tracking
+
+Logging:
+Pino
+
+---
+
+# Design System
+
+Design Goals:
+
+* Premium
+* Clean
+* Modern
+* Mobile First
+
+UI Libraries:
+
+* Shadcn UI
+* Tailwind CSS
+
+Icons:
+
+* Lucide Icons
+* Heroicons
+
+Illustrations:
+
+* unDraw
+* Storyset
+* ManyPixels
+
+Stock Images:
+
+* Unsplash
+* Pexels
+
+Animations:
+
+* Framer Motion
+
+---
+
+# DevOps
+
+Git Strategy:
+
+main
+develop
+feature/*
+hotfix/*
+
+CI/CD:
+
+GitHub Actions
+
+Automated:
+
+* Linting
+* Testing
+* Deployment
+
+---
+
+# Future Roadmap
+
+Phase 2:
+
+* Custom Domains
+* AI Website Generation
+* Team Management
+* Advanced Analytics
+
+Phase 3:
+
+* Marketplace
+* Mobile App
+* CRM
+* Mini E-Commerce
+
+---
+
+# Success Metrics
+
+* Trial Conversion Rate
+* Monthly Active Businesses
+* Subscription Revenue
+* Published Websites
+* Lead Generation Volume
+* WhatsApp Click Rate
+
+End Goal:
+
+Build the leading SaaS platform for African small businesses to create, manage, and grow their online presence without needing a developer.
+{
+  "development_phases": [
+    {
+      "phase": 0,
+      "name": "Project Foundation",
+      "goal": "Establish production-ready architecture and infrastructure.",
+      "frontend": [
+        "Next.js 15",
+        "TypeScript",
+        "TailwindCSS",
+        "Shadcn UI",
+        "ESLint",
+        "Prettier",
+        "Husky"
+      ],
+      "backend": [
+        "NestJS",
+        "Prisma",
+        "PostgreSQL",
+        "Redis",
+        "BullMQ"
+      ],
+      "services": [
+        "Cloudinary",
+        "Paystack",
+        "GitHub Actions",
+        "Sentry",
+        "PostHog"
+      ],
+      "database_tables": [
+        "users",
+        "businesses",
+        "subscriptions",
+        "plans",
+        "payments"
+      ],
+      "deliverables": [
+        "Authentication infrastructure",
+        "Database setup",
+        "Redis setup",
+        "Cloudinary integration",
+        "CI/CD pipeline"
+      ]
+    },
+    {
+      "phase": 1,
+      "name": "Authentication System",
+      "goal": "Implement secure authentication and authorization.",
+      "features": [
+        "Signup",
+        "Login",
+        "Logout",
+        "Email Verification",
+        "Password Reset",
+        "Session Management"
+      ],
+      "security": [
+        "Argon2 Password Hashing",
+        "JWT Access Tokens",
+        "Refresh Tokens",
+        "Rate Limiting",
+        "CSRF Protection"
+      ],
+      "deliverables": [
+        "Authentication APIs",
+        "Email Verification Flow",
+        "Password Reset Flow"
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Business Profile Management",
+      "goal": "Allow users to create and manage business profiles.",
+      "features": [
+        "Business Name",
+        "Slug",
+        "Logo",
+        "Banner",
+        "Description",
+        "WhatsApp",
+        "Email",
+        "Address",
+        "Working Hours",
+        "Social Links"
+      ],
+      "deliverables": [
+        "Business Dashboard",
+        "Business Profile Editor",
+        "Public URL Generator"
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "Subscription & Billing",
+      "goal": "Monetize platform using subscription plans.",
+      "plans": {
+        "trial": {
+          "duration_days": 7
+        },
+        "basic": {
+          "price_ngn": 50000,
+          "billing_cycle": "yearly"
+        },
+        "premium": {
+          "price_ngn": 120000,
+          "billing_cycle": "yearly"
+        }
+      },
+      "features": [
+        "Subscription Management",
+        "Paystack Integration",
+        "Payment Verification",
+        "Webhook Processing",
+        "Renewal Management"
+      ],
+      "subscription_states": [
+        "TRIAL",
+        "ACTIVE",
+        "PAST_DUE",
+        "SUSPENDED",
+        "EXPIRED"
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "Website Builder Engine",
+      "goal": "Build structured website creation system.",
+      "builder_type": "Section Based Builder",
+      "sections": [
+        "Hero",
+        "About",
+        "Products",
+        "Services",
+        "Gallery",
+        "Testimonials",
+        "FAQ",
+        "Contact",
+        "Social Links",
+        "Announcement Bar"
+      ],
+      "database_tables": [
+        "pages",
+        "sections",
+        "themes"
+      ],
+      "deliverables": [
+        "Dynamic Page Builder",
+        "Section Ordering",
+        "Live Preview"
+      ]
+    },
+    {
+      "phase": 5,
+      "name": "Theme System",
+      "goal": "Allow branding customization.",
+      "free_themes": [
+        "Modern White",
+        "Business Green",
+        "Portfolio Lite"
+      ],
+      "premium_themes": [
+        "Luxury Gold",
+        "Fashion Black",
+        "Restaurant Red",
+        "Creative Studio",
+        "Tech Startup"
+      ],
+      "deliverables": [
+        "Theme Engine",
+        "Theme Switching",
+        "Color Tokens",
+        "Typography Tokens"
+      ]
+    },
+    {
+      "phase": 6,
+      "name": "Product Catalog System",
+      "goal": "Enable businesses to showcase products.",
+      "database_tables": [
+        "products",
+        "categories",
+        "product_images"
+      ],
+      "features": [
+        "Product CRUD",
+        "Categories",
+        "Featured Products",
+        "Product Galleries"
+      ]
+    },
+    {
+      "phase": 7,
+      "name": "Services Module",
+      "goal": "Enable businesses to showcase services.",
+      "features": [
+        "Service CRUD",
+        "Service Pricing",
+        "Service Galleries",
+        "Service Categories"
+      ]
+    },
+    {
+      "phase": 8,
+      "name": "Public Website Renderer",
+      "goal": "Generate SEO-optimized public websites.",
+      "routes": [
+        "/@businessSlug",
+        "/@businessSlug/products",
+        "/@businessSlug/services"
+      ],
+      "requirements": [
+        "SSR",
+        "ISR",
+        "SEO",
+        "OpenGraph",
+        "Sitemap"
+      ]
+    },
+    {
+      "phase": 9,
+      "name": "Lead Generation",
+      "goal": "Capture business leads.",
+      "features": [
+        "Contact Forms",
+        "Inquiry Forms",
+        "Lead Dashboard",
+        "Lead Export"
+      ]
+    },
+    {
+      "phase": 10,
+      "name": "WhatsApp Integration",
+      "goal": "Increase conversion rate.",
+      "features": [
+        "Pre-filled Messages",
+        "WhatsApp CTA Buttons",
+        "Click Tracking"
+      ]
+    },
+    {
+      "phase": 11,
+      "name": "Analytics System",
+      "goal": "Provide business insights.",
+      "metrics": [
+        "Page Views",
+        "Product Views",
+        "Service Views",
+        "WhatsApp Clicks",
+        "Lead Form Submissions"
+      ],
+      "architecture": {
+        "flow": [
+          "Frontend Event",
+          "Redis Queue",
+          "Worker",
+          "Database"
+        ]
+      }
+    },
+    {
+      "phase": 12,
+      "name": "Media Management",
+      "goal": "Manage business media assets.",
+      "features": [
+        "Logo Upload",
+        "Banner Upload",
+        "Gallery Upload",
+        "Product Images"
+      ],
+      "storage_provider": "Cloudinary"
+    },
+    {
+      "phase": 13,
+      "name": "Admin Dashboard",
+      "goal": "Manage platform operations.",
+      "features": [
+        "User Management",
+        "Business Management",
+        "Subscription Management",
+        "Template Management",
+        "Analytics Monitoring"
+      ]
+    },
+    {
+      "phase": 14,
+      "name": "Security Hardening",
+      "goal": "Production-grade security.",
+      "requirements": [
+        "Tenant Isolation",
+        "Input Validation",
+        "Rate Limiting",
+        "CSRF Protection",
+        "XSS Protection",
+        "Webhook Verification",
+        "Audit Logs"
+      ]
+    },
+    {
+      "phase": 15,
+      "name": "Testing",
+      "goal": "Ensure platform reliability.",
+      "tools": {
+        "unit_testing": "Jest",
+        "integration_testing": "Jest",
+        "e2e_testing": "Playwright"
+      },
+      "coverage_target": "80%"
+    },
+    {
+      "phase": 16,
+      "name": "Monitoring & Launch",
+      "goal": "Deploy and monitor production environment.",
+      "tools": {
+        "monitoring": "Sentry",
+        "analytics": "PostHog",
+        "logging": "Pino"
+      },
+      "deployment": {
+        "frontend": "Vercel",
+        "backend": "Railway",
+        "database": "Neon PostgreSQL"
+      }
+    }
+  ]
+}
