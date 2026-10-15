@@ -39,8 +39,9 @@ Payment follow-up: known-purchase verification, raw webhook signatures, durable 
 | Priority | Area | Remaining work |
 | --- | --- | --- |
 | P0 | Billing launch | Initial and provably mapped recurring purchases have verified replay-safe fulfilment. Live checkout is blocked. Unproven mappings, refund/dispute policy, operator alerts and genuine sandbox checkout remain open; see RECURRING_BILLING.md. |
+| P0 | Dependency audit | CI installation reports 27 findings including 3 critical across the installed dependency tree. Triage affected paths, production exposure and compatible fixes before launch; see VERIFICATION.md. |
 | P1 | Public renderer | Canonical /@slug SSR page and complete publish-to-contact workflow. |
-| P1 | Identity and uploads | Real reset/verification delivery, session rotation, verified media ownership. |
+| P1 | Identity and uploads | Session rotation and atomic reset/verification are implemented. Real SMTP inbox validation, operational mail monitoring and verified media ownership remain open. |
 | P1 | Runtime integration | Deployed cookie topology, email, provider accounts and production database remain unverified. |
 | P1 | Analytics | Ingestion, aggregation, dashboard and privacy controls remain incomplete. |
 | P2 | Domains/staff/admin | DNS verification, granular roles and audited operations remain later milestones. |

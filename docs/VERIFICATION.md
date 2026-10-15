@@ -3,9 +3,11 @@
 ## Account-security follow-up — 16 October 2026
 
 - Local API full type check, all workspace builds and 129 unit tests pass. Targeted API/web lint passes without fixes.
-- Real PostgreSQL account suite covers hashed/encrypted storage, single-use/expiry/purpose checks, reset/session revocation, refresh rotation/replay/concurrency, normalization, cooldown and mail retry. Initial CI run 38822138641 passed all 61 tests and zero-drift migration checks. Final cookie/UI follow-up CI pending.
+- Real PostgreSQL account suite covers hashed/encrypted storage, single-use/expiry/purpose checks, reset/session revocation (including clearing both browser cookies), refresh rotation/replay/concurrency, normalization, cooldown and mail retry. Final [CI run 38822788408](https://github.com/Wizzyfrosh/Nexora/actions/runs/38822788408) passed both jobs: 129 unit tests across 13 suites, all three workspace builds, and 61 PostgreSQL integration tests (14 account + 29 billing + 18 tenant). All four migrations applied with no schema drift. Tested source: fb43be7baa73a6d7fc5d6373130e90b983914122; CI tested its PR merge commit fcdae87994367470c47538d17d38beeb836d57fe. Subsequent changes only record this evidence and remaining launch gates.
 - Chromium desktop/mobile fixture checks passed: recovery submission, password mismatch guard, explicit verification (no automatic consume), unavailable SMTP message, URL-fragment token privacy and single-flight refresh. SMTP and browser HTTP responses are mocked; these do not prove actual inbox delivery.
 - Fourth SQL migration includes an intentional legacy-token invalidation cutover; no production migration or real email was sent. See ACCOUNT_SECURITY.md.
+- React quality review checked the changed recovery/auth/dashboard screens for hook lifecycle, client-only fragment handling, explicit event-driven mutations, labels/status/errors and disabled submission. No further source changes were needed.
+- CI dependency installation reports 27 audit findings (2 low, 5 moderate, 17 high, 3 critical) across the installed dependency tree. This phase does not triage exploitability or distinguish production from development dependencies; dependency remediation is an unresolved launch gate. Do not treat passing tests as a clean dependency/security audit or run a blind breaking `npm audit fix --force`.
 
 ## Recurring billing follow-up
 
