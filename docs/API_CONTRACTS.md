@@ -1,7 +1,7 @@
 # API inventory and contract rules
 
 Base: /api/v1. Current API envelope: { success, message, data }; apiFetch unwraps data.
-This inventory identifies code, not verified production endpoints. P0 public and payment flaws are documented in SECURITY.md.
+This inventory identifies code, not verified production endpoints. Public tenant/expiry gates have been hardened and regression-tested; remaining payment flaws are documented in SECURITY.md.
 
 ## Existing route families
 
@@ -14,18 +14,18 @@ This inventory identifies code, not verified production endpoints. P0 public and
 | GET                | /businesses/my-businesses                                            | Owner list                                                    |
 | POST               | /businesses                                                          | Authenticated create                                          |
 | GET / PUT          | /businesses/:businessId                                              | Private tenant-scoped profile                                 |
-| GET                | /businesses/slug/:slug                                               | Public profile; entitlement hardening needed                  |
+| GET                | /businesses/slug/:slug                                               | Public profile; shared entitlement policy                  |
 | GET / POST         | /businesses/:businessId/products                                     | Private paginated list / create                               |
 | GET / PUT / DELETE | /businesses/:businessId/products/:productId                          | Private single-item CRUD                                      |
 | GET / POST         | /businesses/:businessId/products/categories/all, /categories         | Actual category routes differ by method/path                  |
-| GET                | /businesses/:businessId/products/public/list, /public/slug/:slug     | Public catalogue; central entitlement gate required           |
+| GET                | /businesses/:businessId/products/public/list, /public/slug/:slug     | Public catalogue; shared entitlement policy           |
 | GET / POST         | /businesses/:businessId/services                                     | Private list / create                                         |
 | GET / PUT / DELETE | /businesses/:businessId/services/:serviceId                          | Private single-item CRUD                                      |
 | GET                | /businesses/:businessId/services/public/list, /public/slug/:slug     | Public services                                               |
 | GET                | /websites/themes                                                     | Preset inventory                                              |
 | GET                | /websites/:businessId                                                | Private config                                                |
-| PUT                | /websites/:businessId/theme, /sections, /domain                      | Tenant config writes; nested authorization must be fixed      |
-| GET                | /websites/public/:businessId                                         | Public config path; review policy/projection before use       |
+| PUT                | /websites/:businessId/theme, /sections, /domain                      | Tenant config writes; sections saved atomically under parent scope      |
+| GET                | /websites/public/:businessId                                         | Public config with shared policy and limited projection       |
 | POST               | /businesses/:businessId/crm/leads                                    | Public form submission                                        |
 | POST               | /businesses/:businessId/crm/track/whatsapp                           | Public click record                                           |
 | GET                | /businesses/:businessId/crm/leads, /leads/stats, /leads/unread-count | Private owner reads                                           |
