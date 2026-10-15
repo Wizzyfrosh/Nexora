@@ -5,7 +5,8 @@
 - Local monorepo build: 3/3 workspaces pass (unchanged web/shared builds cached).
 - API unit suite: 11 suites, 102 tests pass. Full API TypeScript check including integration sources passes; diff whitespace check passes.
 - PostgreSQL billing regressions added alongside the 18 tenant tests: replay/concurrency, distinct purchases, owner isolation, raw HTTP signature, mismatches, rollback, durable retry/reconciliation, suspension and expiry races.
-- Disposable CI now applies both SQL migrations and checks schema drift. Execution result will be recorded after CI completes.
+- Disposable PostgreSQL 16 CI passed **35/35 integration tests** (17 billing + 18 tenant), applied both SQL migrations, and reported no schema difference. Build/unit job also passed. Evidence: [run 38785191636](https://github.com/Wizzyfrosh/Nexora/actions/runs/38785191636), source commit 9c541de9c715e89db233043b8c5a6b6b2210aac8.
+- Initial CI caught an empty additive migration artifact before integration execution; it was corrected and the entire workflow rerun successfully. No production database was touched.
 - No production database changes or live charges. Provider HTTP is mocked in automated integration tests; a real Paystack sandbox exercise and recurring lifecycle/refund gates remain open. See BILLING_ROLLOUT.md.
 
 ## Tenant-safety follow-up
