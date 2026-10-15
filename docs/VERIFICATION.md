@@ -4,7 +4,8 @@
 
 - Fresh `npm ci --no-audit`, shared build, Prisma client generation, all three workspace builds, full API TypeScript check and 129 unit tests pass locally. No framework-major, React or Prisma version migration; Next and its lint configuration move together to 16.4.2.
 - `npm run audit:production`: zero findings. `npm run audit:critical`: exits successfully, zero critical; still reports 25 development-tree entries (5 high, 20 moderate) propagated from two unpatched roots. `npm run audit:full` remains a nonzero manual review, not a clean audit. See DEPENDENCIES.md for exact paths, exposure and sources.
-- Added CI gates for all production severities and critical installed-tree findings; build/test then production-prune API import smoke. Final CI and updated Chromium fixture result pending.
+- [CI run 38823682750](https://github.com/Wizzyfrosh/Nexora/actions/runs/38823682750) passed both jobs on source 765683575b5b8bd8128d8d57bcfb5053affe87c9: audit gates, all three builds, 129 unit tests, production-prune API import smoke, all four migrations, zero schema drift and 61 PostgreSQL integration tests (14 account + 29 billing + 18 tenant). A local pre-CI smoke check caught the wrong compiled API entry path; start:prod and the workspace-aware smoke test were corrected before this successful run. Later changes only record evidence.
+- Chromium desktop/mobile recovery fixture checks pass on Next 16.4.2: request/reset/mismatch guard, explicit verification, missing SMTP state, fragment privacy and concurrent single-flight refresh. Browser HTTP and SMTP are mocked; database boundary evidence comes from the separate real PostgreSQL CI suite, not these fixtures. No deployed cookie or real inbox claim.
 - No production service, database, credentials, provider account or live deployment changed.
 
 ## Account-security follow-up — 16 October 2026
