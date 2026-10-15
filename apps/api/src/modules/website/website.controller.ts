@@ -1,8 +1,14 @@
+import {
+  ThemeRequest,
+  SectionsRequest,
+  DomainRequest,
+} from '../../common/dto/content.dto';
 import { Controller, Get, Put, Body, Param, UseGuards } from '@nestjs/common';
 import { WebsiteService } from './website.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { ResponseMessage } from '../../common/interceptors/transform.interceptor';
+import { PublicBusinessGuard } from '../../common/guards/public-business.guard';
 import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('websites')
@@ -10,11 +16,12 @@ export class WebsiteController {
   constructor(private readonly websiteService: WebsiteService) {}
 
   @Public()
+  @UseGuards(PublicBusinessGuard)
   @Get('public/:businessId')
   @ResponseMessage('Public website configuration retrieved')
   async getPublicWebsite(@Param('businessId') businessId: string) {
     // Used by the generated mini-website to fetch its data
-    return this.websiteService.getWebsiteConfig(businessId);
+    return this.websiteService.getPublicWebsiteConfig(businessId);
   }
 
   @Public()
@@ -36,7 +43,7 @@ export class WebsiteController {
   @ResponseMessage('Theme updated successfully')
   async updateTheme(
     @Param('businessId') businessId: string,
-    @Body() data: { theme: string; colorPalette: any; typography: any },
+    @Body() data: ThemeRequest,
   ) {
     return this.websiteService.updateTheme(businessId, data);
   }
@@ -46,7 +53,7 @@ export class WebsiteController {
   @ResponseMessage('Website sections saved successfully')
   async saveSections(
     @Param('businessId') businessId: string,
-    @Body() data: { sections: any[] },
+    @Body() data: SectionsRequest,
   ) {
     return this.websiteService.saveSections(businessId, data.sections);
   }
@@ -56,8 +63,11 @@ export class WebsiteController {
   @ResponseMessage('Custom domain updated')
   async updateCustomDomain(
     @Param('businessId') businessId: string,
-    @Body() data: { customDomain: string },
+    @Body() data: DomainRequest,
   ) {
-    return this.websiteService.updateCustomDomain(businessId, data.customDomain);
+    return this.websiteService.updateCustomDomain(
+      businessId,
+      data.customDomain,
+    );
   }
 }

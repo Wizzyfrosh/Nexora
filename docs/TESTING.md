@@ -40,6 +40,12 @@ Mock /auth/me and count endpoints only for UI contract verification and clearly 
 Dashboard unavailable counts show an em dash/error, not fabricated zero. Error retry must re-fetch for current tenant.
 Registration never sends a request with invalid password; pending submit disabled; rejection remains visible.
 
+## PostgreSQL tenant-security suite
+
+Run `npm run test:security --workspace api` only against a disposable local PostgreSQL database named `nexora_security`. Set `SECURITY_TEST_DATABASE_URL` and `DATABASE_URL` to that same loopback database and apply the schema there first. The suite refuses non-loopback hosts and other database names; it creates test accounts and never resets a deployed database.
+
+GitHub's `tenant-security-postgres` job supplies a fresh PostgreSQL 16 service and exercises real HTTP auth/tenant guards, foreign sections/categories/leads, rollback after a late error, concurrent saves, public entitlement states, input validation and CSRF origins. Subscription-payment fulfilment tests are still a separate billing milestone.
+
 ## Release criteria
 
 All P0 security cases pass against real PostgreSQL. API + web production builds pass. No critical/high unresolved runtime vulnerabilities. Basic owner/visitor/payment journey verified in staging. Mobile visual review completed. Restore and rollback exercised.

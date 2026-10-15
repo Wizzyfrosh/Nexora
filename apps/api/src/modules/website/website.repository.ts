@@ -1,3 +1,5 @@
+import { BadRequestException } from '@nestjs/common';
+import { SectionInput } from './website-input';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -47,7 +49,8 @@ export class WebsiteRepository {
               order: 1,
               content: {
                 title: 'About Us',
-                description: 'We are a dedicated team providing the best value.',
+                description:
+                  'We are a dedicated team providing the best value.',
               },
             },
             {
@@ -58,17 +61,22 @@ export class WebsiteRepository {
                 email: true,
                 whatsapp: true,
               },
-            }
-          ]
-        }
+            },
+          ],
+        },
       },
       include: {
         sections: true,
-      }
+      },
     });
   }
 
-  async updateTheme(businessId: string, theme: string, colorPalette: any, typography: any) {
+  async updateTheme(
+    businessId: string,
+    theme: string,
+    colorPalette: any,
+    typography: any,
+  ) {
     return this.prisma.website.update({
       where: { businessId },
       data: {
@@ -86,27 +94,47 @@ export class WebsiteRepository {
     });
   }
 
-  async upsertSection(websiteId: string, sectionId: string | undefined, type: any, order: number, content: any) {
-    if (sectionId) {
-      return this.prisma.websiteSection.update({
-        where: { id: sectionId },
-        data: { type, order, content },
+  async replaceSections(
+    businessId: string,
+    websiteId: string,
+    sections: SectionInput[],
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      // Parent row lock serializes complete saves; failures roll back every write.
+      await tx.website.update({
+        where: { id: websiteId, businessId, deletedAt: null },
+        data: { updatedAt: new Date() },
+        select: { id: true },
       });
-    } else {
-      return this.prisma.websiteSection.create({
-        data: {
-          websiteId,
-          type,
-          order,
-          content,
-        },
+      const existing = await tx.websiteSection.findMany({
+        where: { websiteId, deletedAt: null },
+        select: { id: true },
       });
-    }
-  }
-
-  async deleteSection(sectionId: string) {
-    return this.prisma.websiteSection.delete({
-      where: { id: sectionId },
+      const allowed = new Set(existing.map((s) => s.id));
+      const ids = sections.flatMap((s) => (s.id ? [s.id] : []));
+      if (
+        new Set(ids).size !== ids.length ||
+        ids.some((id) => !allowed.has(id))
+      )
+        throw new BadRequestException(
+          'A section does not belong to this website',
+        );
+      await tx.websiteSection.deleteMany({
+        where: { websiteId, deletedAt: null, id: { notIn: ids } },
+      });
+      for (const [order, section] of sections.entries()) {
+        const data = { type: section.type, order, content: section.content };
+        if (section.id)
+          await tx.websiteSection.update({
+            where: { id: section.id, websiteId, deletedAt: null },
+            data,
+          });
+        else await tx.websiteSection.create({ data: { ...data, websiteId } });
+      }
+      return tx.websiteSection.findMany({
+        where: { websiteId, deletedAt: null },
+        orderBy: { order: 'asc' },
+      });
     });
   }
 

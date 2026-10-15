@@ -1,8 +1,26 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, ParseIntPipe, DefaultValuePipe, Ip } from '@nestjs/common';
+import {
+  CreateLeadRequest,
+  TrackClickRequest,
+} from '../../common/dto/content.dto';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  ParseIntPipe,
+  DefaultValuePipe,
+  Ip,
+} from '@nestjs/common';
 import { CrmService } from './crm.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { ResponseMessage } from '../../common/interceptors/transform.interceptor';
+import { PublicBusinessGuard } from '../../common/guards/public-business.guard';
 import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('businesses/:businessId/crm')
@@ -12,25 +30,31 @@ export class CrmController {
   // ---- Public Storefront Routes ----
 
   @Public()
+  @UseGuards(PublicBusinessGuard)
   @Post('leads')
   @ResponseMessage('Message sent successfully')
   async submitContactForm(
     @Param('businessId') businessId: string,
-    @Body() dto: any, // CreateLeadDto
+    @Body() dto: CreateLeadRequest,
   ) {
     return this.crmService.captureLead(businessId, dto);
   }
 
   @Public()
+  @UseGuards(PublicBusinessGuard)
   @Post('track/whatsapp')
   @ResponseMessage('Click tracked')
   async trackWhatsAppClick(
     @Param('businessId') businessId: string,
-    @Body('source') source: string,
+    @Body() data: TrackClickRequest,
     @Ip() ip: string, // Simple sessionId proxy for unauthenticated storefront users
   ) {
     // Note: In real production, pass a proper sessionId from frontend cookies
-    return this.crmService.logWhatsAppClick(businessId, ip || 'unknown', source || 'direct');
+    return this.crmService.logWhatsAppClick(
+      businessId,
+      ip || 'unknown',
+      data.source || 'direct',
+    );
   }
 
   // ---- Tenant Dashboard Routes ----

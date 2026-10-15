@@ -32,28 +32,11 @@ export class TenantGuard implements CanActivate {
       return true;
     }
 
-    // Extract businessId from route params or body
-    const businessId =
-      request.params.businessId ||
-      request.body?.businessId ||
-      request.query?.businessId;
-
-    if (!businessId) {
-      // If no businessId, try to resolve from user's primary business
-      const business = await this.prisma.business.findFirst({
-        where: {
-          ownerId: user.id,
-          deletedAt: null,
-        },
-        select: { id: true },
-      });
-
-      if (business) {
-        request.businessId = business.id;
-        return true;
-      }
-
-      throw new ForbiddenException('No business associated with this account');
+    // Private tenant routes identify the tenant in the route, never in a
+    // client-controlled body/query or an implicit primary-business fallback.
+    const businessId = request.params.businessId;
+    if (typeof businessId !== 'string' || !businessId) {
+      throw new ForbiddenException('A business route parameter is required');
     }
 
     // Verify the user owns this business

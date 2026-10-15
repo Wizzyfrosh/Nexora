@@ -44,21 +44,37 @@ describe('ServiceService', () => {
 
   describe('services CRUD', () => {
     it('should retrieve paginated list of services', async () => {
-      const mockResult = { data: [mockService], total: 1, page: 1, limit: 10, totalPages: 1 };
+      const mockResult = {
+        data: [mockService],
+        total: 1,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      };
       serviceRepo.getServices.mockResolvedValue(mockResult);
 
       const result = await service.getServices('business-id-123', 1, 10);
 
-      expect(serviceRepo.getServices).toHaveBeenCalledWith('business-id-123', 1, 10);
+      expect(serviceRepo.getServices).toHaveBeenCalledWith(
+        'business-id-123',
+        1,
+        10,
+      );
       expect(result).toEqual(mockResult);
     });
 
     it('should retrieve single service by ID', async () => {
       serviceRepo.findServiceById.mockResolvedValue(mockService);
 
-      const result = await service.getService('business-id-123', 'service-id-123');
+      const result = await service.getService(
+        'business-id-123',
+        'service-id-123',
+      );
 
-      expect(serviceRepo.findServiceById).toHaveBeenCalledWith('service-id-123', 'business-id-123');
+      expect(serviceRepo.findServiceById).toHaveBeenCalledWith(
+        'service-id-123',
+        'business-id-123',
+      );
       expect(result).toEqual(mockService);
     });
 
@@ -101,21 +117,43 @@ describe('ServiceService', () => {
         price: 5000,
       });
 
-      expect(serviceRepo.findServiceBySlug).toHaveBeenNthCalledWith(1, 'business-id-123', 'hair-styling');
-      expect(serviceRepo.findServiceBySlug).toHaveBeenNthCalledWith(2, 'business-id-123', 'hair-styling-1');
+      expect(serviceRepo.findServiceBySlug).toHaveBeenNthCalledWith(
+        1,
+        'business-id-123',
+        'hair-styling',
+      );
+      expect(serviceRepo.findServiceBySlug).toHaveBeenNthCalledWith(
+        2,
+        'business-id-123',
+        'hair-styling-1',
+      );
       expect(result.slug).toBe('hair-styling-1');
     });
 
     it('should update service if exists', async () => {
       serviceRepo.findServiceById.mockResolvedValue(mockService);
-      serviceRepo.updateService.mockResolvedValue({ ...mockService, price: 6000 });
-
-      const result = await service.updateService('business-id-123', 'service-id-123', {
+      serviceRepo.updateService.mockResolvedValue({
+        ...mockService,
         price: 6000,
       });
 
-      expect(serviceRepo.findServiceById).toHaveBeenCalledWith('service-id-123', 'business-id-123');
-      expect(serviceRepo.updateService).toHaveBeenCalledWith('service-id-123', { price: 6000 });
+      const result = await service.updateService(
+        'business-id-123',
+        'service-id-123',
+        {
+          price: 6000,
+        },
+      );
+
+      expect(serviceRepo.findServiceById).toHaveBeenCalledWith(
+        'service-id-123',
+        'business-id-123',
+      );
+      expect(serviceRepo.updateService).toHaveBeenCalledWith(
+        'service-id-123',
+        'business-id-123',
+        { price: 6000 },
+      );
       expect(result.price).toBe(6000);
     });
 
@@ -125,8 +163,14 @@ describe('ServiceService', () => {
 
       await service.deleteService('business-id-123', 'service-id-123');
 
-      expect(serviceRepo.findServiceById).toHaveBeenCalledWith('service-id-123', 'business-id-123');
-      expect(serviceRepo.deleteService).toHaveBeenCalledWith('service-id-123');
+      expect(serviceRepo.findServiceById).toHaveBeenCalledWith(
+        'service-id-123',
+        'business-id-123',
+      );
+      expect(serviceRepo.deleteService).toHaveBeenCalledWith(
+        'service-id-123',
+        'business-id-123',
+      );
     });
   });
 });

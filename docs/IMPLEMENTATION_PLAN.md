@@ -8,7 +8,7 @@ Audit source, replace homepage/account/workspace shell, remove fake overview met
 Exit: changed UI compiles; links resolve; real counts/error states work at contract boundary; docs match actual implementation.
 The public renderer and P0 security fixes are not silently counted as finished.
 
-## M1 — Tenant and public-access safety (next)
+## M1 — Tenant and public-access safety (code implemented; integration gate pending)
 
 - Transactional section replacement scoped to website; validate all IDs before deletion; tests prove no foreign writes.
 - Cross-tenant category/media/product/lead checks, explicit public projections and safe URL validators.
@@ -16,7 +16,9 @@ The public renderer and P0 security fixes are not silently counted as finished.
 - Fail-closed production config, deployment cookie/CSRF review.
   Exit: negative integration tests with owners A/B on isolated PostgreSQL, no partial writes, no draft/expired access.
 
-## M2 — Trustworthy billing
+Implemented first slice: tenant-scoped transaction writes, category checks, public policy/projections, runtime input/pagination validation, production configuration checks and OriginGuard. CI runs real PostgreSQL regression tests. Media-provider ownership integration and final deployed cookie validation still require follow-up; do not claim those complete.
+
+## M2 — Trustworthy billing (next after security checks)
 
 Durable pending purchases/inbox/fulfilment, raw signature verification, correct provider IDs, amount/currency/reference checks, transactional replay guard, reconciliation and event ordering.
 Exit: concurrent webhook/callback tests pass; provider test-mode payment grants exactly once; retry recovers without double grant. Live charging remains off until pricing/refund/support policy is confirmed.

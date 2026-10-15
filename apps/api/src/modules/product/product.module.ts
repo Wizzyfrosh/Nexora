@@ -1,3 +1,4 @@
+import { PublicBusinessGuard } from '../../common/guards/public-business.guard';
 import { Module } from '@nestjs/common';
 import { ProductController } from './product.controller';
 import { ProductService } from './product.service';
@@ -7,7 +8,7 @@ import { BusinessModule } from '../business/business.module';
 @Module({
   imports: [BusinessModule],
   controllers: [ProductController],
-  providers: [ProductService, ProductRepository],
+  providers: [PublicBusinessGuard, ProductService, ProductRepository],
   exports: [ProductService],
 })
 export class ProductModule {}

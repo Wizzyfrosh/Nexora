@@ -1,4 +1,12 @@
-import { Injectable, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { assertPublicAccess } from '../../common/security/public-access';
+import { assertBusinessUrls } from '../../common/security/business-urls';
+import { publicBusiness } from '../../common/security/public-projections';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { BusinessRepository } from './business.repository';
 import { CreateBusinessDto, UpdateBusinessDto } from '@nexora/shared-types';
 
@@ -8,10 +16,10 @@ export class BusinessService {
 
   async createBusiness(ownerId: string, dto: CreateBusinessDto) {
     // Generate base slug if not provided, else format the provided one
-    let targetSlug = dto.slug 
-      ? this.formatSlug(dto.slug) 
+    let targetSlug = dto.slug
+      ? this.formatSlug(dto.slug)
       : this.formatSlug(dto.name);
-      
+
     // Ensure uniqueness
     targetSlug = await this.ensureUniqueSlug(targetSlug);
     dto.slug = targetSlug;
@@ -29,15 +37,8 @@ export class BusinessService {
 
   async getPublicProfileBySlug(slug: string) {
     const business = await this.businessRepo.findBySlug(slug);
-    if (!business || !business.isPublished) {
-      throw new NotFoundException('Business not found or not published');
-    }
-
-    if (business.subscription && (business.subscription.status === 'EXPIRED' || business.subscription.status === 'SUSPENDED')) {
-      throw new ForbiddenException('Subscription inactive');
-    }
-
-    return business;
+    assertPublicAccess(business);
+    return publicBusiness(business!);
   }
 
   async getMyBusinesses(ownerId: string) {
@@ -45,6 +46,7 @@ export class BusinessService {
   }
 
   async updateBusiness(businessId: string, dto: UpdateBusinessDto) {
+    assertBusinessUrls(dto);
     const business = await this.businessRepo.findById(businessId);
     if (!business) {
       throw new NotFoundException('Business not found');

@@ -1,8 +1,26 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
+import {
+  CreateProductRequest,
+  UpdateProductRequest,
+  CreateCategoryRequest,
+} from '../../common/dto/content.dto';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  ParseIntPipe,
+  DefaultValuePipe,
+} from '@nestjs/common';
 import { ProductService } from './product.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { ResponseMessage } from '../../common/interceptors/transform.interceptor';
+import { PublicBusinessGuard } from '../../common/guards/public-business.guard';
 import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('businesses/:businessId/products')
@@ -12,6 +30,7 @@ export class ProductController {
   // ---- Public Routes (For the storefronts) ----
 
   @Public()
+  @UseGuards(PublicBusinessGuard)
   @Get('public/slug/:slug')
   @ResponseMessage('Public product retrieved')
   async getPublicProductBySlug(
@@ -22,6 +41,7 @@ export class ProductController {
   }
 
   @Public()
+  @UseGuards(PublicBusinessGuard)
   @Get('public/list')
   @ResponseMessage('Public products list retrieved')
   async getPublicProductsList(
@@ -29,7 +49,7 @@ export class ProductController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    return this.productService.getProducts(businessId, page, limit);
+    return this.productService.getPublicProducts(businessId, page, limit);
   }
 
   // ---- Tenant Scoped Management Routes ----
@@ -60,7 +80,7 @@ export class ProductController {
   @ResponseMessage('Product created successfully')
   async createProduct(
     @Param('businessId') businessId: string,
-    @Body() dto: any, // CreateProductDto - validation pipes applied globally
+    @Body() dto: CreateProductRequest,
   ) {
     return this.productService.createProduct(businessId, dto);
   }
@@ -71,7 +91,7 @@ export class ProductController {
   async updateProduct(
     @Param('businessId') businessId: string,
     @Param('productId') productId: string,
-    @Body() dto: any, // UpdateProductDto
+    @Body() dto: UpdateProductRequest,
   ) {
     return this.productService.updateProduct(businessId, productId, dto);
   }
@@ -101,7 +121,7 @@ export class ProductController {
   @ResponseMessage('Category created')
   async createCategory(
     @Param('businessId') businessId: string,
-    @Body() dto: any, // CreateCategoryDto
+    @Body() dto: CreateCategoryRequest,
   ) {
     return this.productService.createCategory(businessId, dto);
   }

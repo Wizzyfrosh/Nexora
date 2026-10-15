@@ -36,14 +36,14 @@ This inventory identifies code, not verified production endpoints. P0 public and
 
 ## New/changed API requirements
 
-Define explicit DTOs for theme, typography, sections and domains. Current inline types/any do not provide runtime constraints.
+Define explicit DTOs for theme, typography, sections and domains. Runtime content DTOs now validate catalogue, lead and website input; section/theme service validators provide additional bounds. Provider upload ownership remains a separate feature.
 Reject unknown properties, duplicate section IDs, unsupported section types, negative/NaN/oversized prices, unsafe URL protocols and cross-tenant foreign keys.
 Public serializers return only business contact/catalogue data intended for display; never owner identity/password/token fields, private leads or provider/payment data.
 
 ## Pagination
 
 Existing catalogue clients expect { data: [...], total, page, limit, totalPages } inside the API envelope.
-Keep page >=1, limit between 1 and 100, server-side bounds and stable ordering. Validate query values rather than relying on implicit conversion.
+Current catalogue/CRM service bounds enforce page >=1 (maximum 1000000), limit between 1 and 100, and stable ordering. Validate query values rather than relying on implicit conversion.
 Return 400 validation errors, 401 authentication failure, 403 authorization failure (or consistent 404 resource concealment), 409 conflict, 429 throttling, 503 provider/dependency unavailability.
 
 ## Illustrative contract
@@ -57,6 +57,10 @@ GET /businesses/{authorizedId}/crm/leads/stats:
   "data": { "total": 0, "unread": 0, "thisWeek": 0 }
 }
 ```
+
+Public lead capture now returns only { id }, and click tracking returns { recorded: true }; private visitor details are not echoed publicly.
+
+Cookie-authenticated mutations must include the exact configured Origin. A browser's origin must be on the fixed web origin until verified custom-domain support is implemented.
 
 Zero means a successful count of zero; unavailable must remain an error. Never convert failed count requests to invented zero statistics.
 
