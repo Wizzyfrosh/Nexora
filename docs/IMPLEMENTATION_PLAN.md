@@ -30,6 +30,7 @@ Implemented raw signatures, durable snapshot/inbox/reconciliation, owner-only ve
 Before live M2 activation, finish the remaining policy/provider/operator checks in RECURRING_BILLING.md. Recurring invoice processing and owner cancellation are now implemented in the test-gated follow-up; this does not enable live billing.
 
 Deliver verification/reset emails, build token screens, hash/rotate tokens safely and validate cross-origin deployment.
+Account implementation is now present behind configured SMTP delivery; see ACCOUNT_SECURITY.md. Token/session cutover logs owners out by design. Real inbox delivery and deployed cookie validation remain required before this exit gate is met.
 Implement signed Cloudinary uploads, ownership/size/type limits, cleanup and optional moderation.
 Exit: fresh owner verifies/resets and uploads an image without exposing secrets; negative upload/auth tests pass.
 

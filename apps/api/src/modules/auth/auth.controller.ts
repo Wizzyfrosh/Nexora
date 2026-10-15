@@ -53,11 +53,11 @@ export class AuthController {
     // Set HTTP-only cookies
     res.cookie('access_token', result.tokens.accessToken, {
       ...COOKIE_OPTIONS,
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      maxAge: result.tokens.accessMaxAge,
     });
     res.cookie('refresh_token', result.tokens.refreshToken, {
       ...COOKIE_OPTIONS,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: result.tokens.refreshMaxAge,
     });
 
     return result.user;
@@ -81,29 +81,25 @@ export class AuthController {
     // Set HTTP-only cookies
     res.cookie('access_token', result.tokens.accessToken, {
       ...COOKIE_OPTIONS,
-      maxAge: 15 * 60 * 1000,
+      maxAge: result.tokens.accessMaxAge,
     });
     res.cookie('refresh_token', result.tokens.refreshToken, {
       ...COOKIE_OPTIONS,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: result.tokens.refreshMaxAge,
     });
 
     return result.user;
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Public()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Logged out successfully')
-  async logout(
-    @CurrentUser('id') userId: string,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const refreshToken = req.cookies?.refresh_token;
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken: unknown = req.cookies?.refresh_token;
 
     if (refreshToken) {
-      await this.authService.logout(refreshToken, userId);
+      await this.authService.logout(refreshToken);
     }
 
     // Clear cookies
@@ -122,20 +118,35 @@ export class AuthController {
     @Body() body: RefreshTokenRequestDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshToken = req.cookies?.refresh_token || body.refreshToken;
+    const refreshToken: unknown =
+      req.cookies?.refresh_token || body.refreshToken;
 
-    const tokens = await this.authService.refreshTokens(refreshToken);
+    let tokens: Awaited<ReturnType<AuthService['refreshTokens']>>;
+    try {
+      tokens = await this.authService.refreshTokens(refreshToken);
+    } catch (error) {
+      res.clearCookie('access_token', COOKIE_OPTIONS);
+      res.clearCookie('refresh_token', COOKIE_OPTIONS);
+      throw error;
+    }
 
     res.cookie('access_token', tokens.accessToken, {
       ...COOKIE_OPTIONS,
-      maxAge: 15 * 60 * 1000,
+      maxAge: tokens.accessMaxAge,
     });
     res.cookie('refresh_token', tokens.refreshToken, {
       ...COOKIE_OPTIONS,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: tokens.refreshMaxAge,
     });
 
     return { message: 'Tokens refreshed' };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.OK)
+  async resendVerification(@CurrentUser('id') userId: string) {
+    return this.authService.resendVerification(userId);
   }
 
   @Public()
@@ -150,7 +161,9 @@ export class AuthController {
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  @ResponseMessage('If an account exists with this email, a password reset link has been sent')
+  @ResponseMessage(
+    'If the account is eligible and email is configured, a reset link will be sent',
+  )
   async forgotPassword(@Body() dto: ForgotPasswordRequestDto) {
     await this.authService.forgotPassword(dto.email);
     return null;

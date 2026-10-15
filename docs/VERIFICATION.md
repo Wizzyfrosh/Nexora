@@ -1,5 +1,11 @@
 # Verification report — 15 October 2026
 
+## Account-security follow-up — 16 October 2026
+
+- Local API full type check, all workspace builds and 127 unit tests pass. Targeted API/web lint checked.
+- Real PostgreSQL account suite added to the disposable CI job, covering hashed/encrypted storage, single-use/expiry/purpose checks, reset/session revocation, refresh rotation/replay/concurrency, normalization, cooldown and mail retry. CI execution pending.
+- Fourth SQL migration includes an intentional legacy-token invalidation cutover; no production migration or real email was sent. See ACCOUNT_SECURITY.md.
+
 ## Recurring billing follow-up
 
 - Local: 123 unit tests across 12 suites pass; all three workspace builds pass. API type check including integration sources and targeted changed web lint pass.

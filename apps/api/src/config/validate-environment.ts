@@ -23,6 +23,17 @@ export function validateEnvironment(
   if (env.JWT_ACCESS_SECRET === env.JWT_REFRESH_SECRET) {
     throw new Error('Production JWT access and refresh secrets must differ');
   }
+  if (
+    env.SMTP_HOST &&
+    (!/^[a-fA-F0-9]{64}$/.test(String(env.EMAIL_TOKEN_KEY || '')) ||
+      !env.SMTP_USER ||
+      !env.SMTP_PASS ||
+      !env.EMAIL_FROM)
+  ) {
+    throw new Error(
+      'Configured SMTP requires credentials, EMAIL_FROM and an independent 64-hex EMAIL_TOKEN_KEY',
+    );
+  }
   try {
     const database = new URL(String(env.DATABASE_URL ?? ''));
     if (

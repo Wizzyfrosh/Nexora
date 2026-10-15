@@ -185,6 +185,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
                   : "Sign in to your workspace"}
               <ArrowUpRight size={17} />
             </button>
+            {!registering && <Link href="/forgot-password" className="text-sm text-violet-700 underline">Forgot password?</Link>}
           </form>
           <p className="auth-switch">
             {registering ? "Already have an account?" : "New to Nexora?"}{" "}

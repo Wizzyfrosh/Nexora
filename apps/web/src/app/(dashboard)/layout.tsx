@@ -136,7 +136,10 @@ export default function DashboardLayout({
               <i /> Your business, in focus
             </span>
           </header>
-          <main className="workspace-content">{children}</main>
+          <main className="workspace-content">
+            {user && !user.emailVerified && <div className="mb-6 rounded-2xl border border-violet-200 bg-violet-50 p-4 text-sm">Your email is not verified. <Link href="/verify-email" className="font-semibold text-violet-700 underline">Verify your email</Link></div>}
+            {children}
+          </main>
         </div>
       </div>
     </AuthGuard>
