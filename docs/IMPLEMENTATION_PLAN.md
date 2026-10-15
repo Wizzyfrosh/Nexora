@@ -31,7 +31,7 @@ Before live M2 activation, finish the remaining policy/provider/operator checks 
 
 Deliver verification/reset emails, build token screens, hash/rotate tokens safely and validate cross-origin deployment.
 Account implementation is now present behind configured SMTP delivery; see ACCOUNT_SECURITY.md. Token/session cutover logs owners out by design. Real inbox delivery and deployed cookie validation remain required before this exit gate is met.
-Implement signed Cloudinary uploads, ownership/size/type limits, cleanup and optional moderation.
+Signed Cloudinary upload, ownership/size/type limits, cleanup and owner pickers are now implemented for public catalogue images. The API mediates and sanitizes uploads rather than granting reusable browser signatures. See MEDIA_SECURITY.md for quotas, legacy inventory, public-CDN limits and real-provider staging gates. Optional moderation is not implemented.
 Exit: fresh owner verifies/resets and uploads an image without exposing secrets; negative upload/auth tests pass.
 
 ## M4 — Public website delivery
