@@ -1,5 +1,12 @@
 # Verification report — 15 October 2026
 
+## Recurring billing follow-up
+
+- Local: 123 unit tests across 12 suites pass; all three workspace builds pass. API type check including integration sources and targeted changed web lint pass.
+- Added PostgreSQL regressions for exact mapping, concurrent invoice replay, paid cancellation, failure/ordering, invalid evidence and latest-invoice recovery. Hosted CI execution pending.
+- Added an additive SQL migration; CI applies all three migrations and checks schema drift on disposable PostgreSQL 16.
+- No provider account was charged or refunded. Provider transport remains mocked in automated tests. See RECURRING_BILLING.md for live launch blockers.
+
 ## Payment hardening follow-up
 
 - Local monorepo build: 3/3 workspaces pass (unchanged web/shared builds cached).

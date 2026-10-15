@@ -13,6 +13,32 @@ export interface PaystackCharge {
   customer: { customer_code: string; email: string };
 }
 
+export interface PaystackInvoice {
+  invoice_code: string;
+  amount: number;
+  period_start: string;
+  period_end: string;
+  paid: boolean | number;
+  transaction: number | string | null;
+}
+
+export interface PaystackSubscription {
+  subscription_code: string;
+  domain: string;
+  status: string;
+  amount: number;
+  updatedAt: string;
+  customer: { customer_code: string; email: string };
+  plan: {
+    plan_code: string;
+    amount: number;
+    currency: string;
+    interval: string;
+  };
+  most_recent_invoice?: PaystackInvoice | null;
+  email_token?: string; // Used transiently for provider cancellation; never persisted/returned.
+}
+
 @Injectable()
 export class PaystackService {
   private readonly secretKey: string;
@@ -29,7 +55,11 @@ export class PaystackService {
     }
   }
 
-  private async request(path: string, body?: Record<string, unknown>) {
+  private async request(
+    path: string,
+    body?: Record<string, unknown>,
+    allowEmpty = false,
+  ) {
     if (!this.secretKey)
       throw new ServiceUnavailableException('Paystack is not configured');
     try {
@@ -43,7 +73,11 @@ export class PaystackService {
         signal: AbortSignal.timeout(8000),
       });
       const result = await response.json();
-      if (!response.ok || result.status !== true || !result.data)
+      if (
+        !response.ok ||
+        result.status !== true ||
+        (!allowEmpty && !result.data)
+      )
         throw new Error('Provider unavailable');
       return result;
     } catch {
@@ -92,6 +126,19 @@ export class PaystackService {
     reference: string,
   ): Promise<{ data: PaystackCharge }> {
     return this.request('/transaction/verify/' + encodeURIComponent(reference));
+  }
+
+  fetchSubscription(code: string): Promise<{ data: PaystackSubscription }> {
+    return this.request('/subscription/' + encodeURIComponent(code));
+  }
+
+  fetchTransaction(id: string): Promise<{ data: PaystackCharge }> {
+    return this.request('/transaction/' + encodeURIComponent(id));
+  }
+
+  async cancelSubscription(code: string, token: string) {
+    this.assertTestCheckout();
+    await this.request('/subscription/disable', { code, token }, true);
   }
 
   validateWebhookSignature(

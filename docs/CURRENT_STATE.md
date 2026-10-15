@@ -30,6 +30,8 @@ Local API build/type checks and 79 unit tests pass. The disposable PostgreSQL 16
 
 ## Still incomplete / launch blockers
 
+Recurring follow-up now implements transaction-linked provider mapping, verified invoice renewal, separate renewal metadata, durable owner cancellation and periodic latest-invoice sync. Billing UI uses real status and removes invented metrics/unreleased-feature claims. See RECURRING_BILLING.md for evidence requirements and remaining live gates; provider mapping without an exact invoice/transaction remains review-only.
+
 Payment follow-up: known-purchase verification, raw webhook signatures, durable recovery and atomic replay protection are implemented. CI run 38785191636 passed 102 unit tests and 35 PostgreSQL integration tests, including 17 billing scenarios; both migrations applied with no schema drift. This is a tested purchase-processing slice, not completion of all M2 launch gates.
 
 | Priority | Area | Remaining work |
