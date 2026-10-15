@@ -1,5 +1,12 @@
 # Verification report — 15 October 2026
 
+## Dependency maintenance — 16 October 2026
+
+- Fresh `npm ci --no-audit`, shared build, Prisma client generation, all three workspace builds, full API TypeScript check and 129 unit tests pass locally. No framework-major, React or Prisma version migration; Next and its lint configuration move together to 16.4.2.
+- `npm run audit:production`: zero findings. `npm run audit:critical`: exits successfully, zero critical; still reports 25 development-tree entries (5 high, 20 moderate) propagated from two unpatched roots. `npm run audit:full` remains a nonzero manual review, not a clean audit. See DEPENDENCIES.md for exact paths, exposure and sources.
+- Added CI gates for all production severities and critical installed-tree findings; build/test then production-prune API import smoke. Final CI and updated Chromium fixture result pending.
+- No production service, database, credentials, provider account or live deployment changed.
+
 ## Account-security follow-up — 16 October 2026
 
 - Local API full type check, all workspace builds and 129 unit tests pass. Targeted API/web lint passes without fixes.

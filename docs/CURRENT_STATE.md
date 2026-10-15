@@ -5,7 +5,7 @@ Static code review and local builds/tests do not prove a deployed API or databas
 
 ## Present in the code
 
-- npm/Turborepo monorepo with Next.js 16.2.7, React 19.2.4, NestJS 11, Prisma 6.4.1 and shared types.
+- npm/Turborepo monorepo with Next.js 16.4.2, React 19.2.4, NestJS 11, Prisma 6.4.1 and shared types.
 - Auth services/controllers, Argon2 hashing, JWT cookies, refresh flow and initial business/trial creation.
 - Business profile routes; products, categories, services and CRM repositories/services/controllers.
 - Theme/config/section persistence, seeded theme definitions and appearance/settings screens.
@@ -39,7 +39,7 @@ Payment follow-up: known-purchase verification, raw webhook signatures, durable 
 | Priority | Area | Remaining work |
 | --- | --- | --- |
 | P0 | Billing launch | Initial and provably mapped recurring purchases have verified replay-safe fulfilment. Live checkout is blocked. Unproven mappings, refund/dispute policy, operator alerts and genuine sandbox checkout remain open; see RECURRING_BILLING.md. |
-| P0 | Dependency audit | CI installation reports 27 findings including 3 critical across the installed dependency tree. Triage affected paths, production exposure and compatible fixes before launch; see VERIFICATION.md. |
+| P0 | Dependency release review | Compatible updates remove all reported production findings and critical findings. Two unpatched development-tooling roots still produce 25 affected entries (5 high, 20 moderate); upstream remediation or an explicit release risk decision remains required. See DEPENDENCIES.md and VERIFICATION.md. |
 | P1 | Public renderer | Canonical /@slug SSR page and complete publish-to-contact workflow. |
 | P1 | Identity and uploads | Session rotation and atomic reset/verification are implemented. Real SMTP inbox validation, operational mail monitoring and verified media ownership remain open. |
 | P1 | Runtime integration | Deployed cookie topology, email, provider accounts and production database remain unverified. |
