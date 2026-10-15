@@ -5,6 +5,7 @@ import { Brand } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { useAuth } from "@/lib/contexts/AuthContext";
+import type { AccountMailResponse } from "@nexora/shared-types";
 
 const subscribe = (notify: () => void) => {
   window.addEventListener("hashchange", notify);
@@ -59,6 +60,7 @@ export function AccountRecovery({
         setNotice(
           "Password changed. All existing sessions have ended. Sign in with your new password.",
         );
+        await refreshUser();
         setDone(true);
       } else if (token) {
         await apiFetch("/auth/verify-email", {
@@ -69,7 +71,7 @@ export function AccountRecovery({
         setDone(true);
         await refreshUser();
       } else {
-        const result = await apiFetch<{ delivery: string }>(
+        const result = await apiFetch<AccountMailResponse>(
           "/auth/resend-verification",
           { method: "POST" },
         );

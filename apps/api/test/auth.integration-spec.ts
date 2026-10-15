@@ -179,10 +179,16 @@ describe('Account security on isolated PostgreSQL (SMTP transport only mocked)',
   });
   it('reset revokes both access and refresh tokens and invalidates the old password', async () => {
     const token = await resetLink();
+    const changed = await post('reset-password', {
+      token,
+      password: 'NewPassword456!',
+    });
+    expect(changed.status).toBe(200);
     expect(
-      (await post('reset-password', { token, password: 'NewPassword456!' }))
-        .status,
-    ).toBe(200);
+      (changed.headers['set-cookie'] as unknown as string[]).every((c) =>
+        c.includes('Expires=Thu, 01 Jan 1970'),
+      ),
+    ).toBe(true);
     await request(app.getHttpServer())
       .get('/api/v1/auth/me')
       .set('Cookie', cookies)

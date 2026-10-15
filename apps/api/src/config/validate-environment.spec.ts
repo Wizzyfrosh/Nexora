@@ -7,6 +7,22 @@ const production = {
   FRONTEND_URL: 'https://example.com',
 };
 describe('production configuration', () => {
+  it('rejects configured SMTP without a secure mail key and sender', () => {
+    expect(() =>
+      validateEnvironment({ ...production, SMTP_HOST: 'smtp.example.test' }),
+    ).toThrow('Configured SMTP');
+  });
+  it('accepts configured SMTP with an explicit encryption key and sender', () => {
+    const value = {
+      ...production,
+      SMTP_HOST: 'smtp.example.test',
+      SMTP_USER: 'test',
+      SMTP_PASS: 'test',
+      EMAIL_FROM: 'owner@example.test',
+      EMAIL_TOKEN_KEY: 'ab'.repeat(32),
+    };
+    expect(validateEnvironment(value)).toBe(value);
+  });
   it('accepts explicit valid settings', () =>
     expect(validateEnvironment(production)).toBe(production));
   it('permits isolated development settings', () =>

@@ -173,8 +173,13 @@ export class AuthController {
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Password reset successfully')
-  async resetPassword(@Body() dto: ResetPasswordRequestDto) {
+  async resetPassword(
+    @Body() dto: ResetPasswordRequestDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     await this.authService.resetPassword(dto.token, dto.password);
+    res.clearCookie('access_token', COOKIE_OPTIONS);
+    res.clearCookie('refresh_token', COOKIE_OPTIONS);
     return null;
   }
 

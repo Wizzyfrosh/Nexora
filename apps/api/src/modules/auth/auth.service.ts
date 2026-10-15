@@ -17,6 +17,7 @@ import * as argon2 from 'argon2';
 import { randomUUID } from 'node:crypto';
 import { AccountSecurityRepository } from './account-security.repository';
 import { AccountMailService } from './account-mail.service';
+import type { AccountMailResponse } from '@nexora/shared-types';
 import { secretToken, tokenHash, validToken } from './account-security';
 import { AuthRepository } from './auth.repository';
 import { UserRole } from '@prisma/client';
@@ -292,7 +293,7 @@ export class AuthService {
     );
   }
 
-  async resendVerification(userId: string) {
+  async resendVerification(userId: string): Promise<AccountMailResponse> {
     const user = await this.authRepo.findUserById(userId);
     if (!user) throw new UnauthorizedException('Session unavailable');
     if (user.emailVerified) return { delivery: 'ALREADY_VERIFIED' };
