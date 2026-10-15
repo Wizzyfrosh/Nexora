@@ -1,233 +1,184 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { SubscriptionService } from './subscription.service';
 import { SubscriptionRepository } from './subscription.repository';
 import { PaystackService } from './paystack.service';
 import { AuthRepository } from '../auth/auth.repository';
 import { BusinessService } from '../business/business.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { SubscriptionPlan, SubscriptionStatus } from '@prisma/client';
+import { SubscriptionPlan } from '@nexora/shared-types';
 
-describe('SubscriptionService', () => {
+describe('Subscription purchase policy', () => {
+  const ref = 'nexora-test';
+  let repo: Record<string, jest.Mock>;
+  let provider: Record<string, jest.Mock>;
   let service: SubscriptionService;
-  let subRepo: jest.Mocked<SubscriptionRepository>;
-  let paystackService: jest.Mocked<PaystackService>;
-  let authRepo: jest.Mocked<AuthRepository>;
-  let businessService: jest.Mocked<BusinessService>;
-
-  const mockBusiness = {
-    id: 'business-id-123',
-    ownerId: 'user-id-123',
-    name: 'Test Business',
-    slug: 'test-business',
-  } as any;
-
-  const mockUser = {
-    id: 'user-id-123',
-    email: 'test@example.com',
-  } as any;
-
-  const mockPlan = {
-    id: 'plan-id-123',
-    name: SubscriptionPlan.BASIC,
-    displayName: 'Basic Plan',
-    priceNgn: 50000,
-    paystackPlanCode: 'PLN_basic_code',
-  } as any;
-
-  const mockSubscription = {
-    id: 'sub-id-123',
-    businessId: 'business-id-123',
-    plan: SubscriptionPlan.TRIAL,
-    status: SubscriptionStatus.TRIAL,
-  } as any;
-
-  beforeEach(async () => {
-    const mockSubRepo = {
-      findPlanByName: jest.fn(),
-      findByBusinessId: jest.fn(),
-      createPaymentRecord: jest.fn(),
-      updateSubscriptionStatus: jest.fn(),
-      updatePaymentRecord: jest.fn(),
-      findExpiredSubscriptions: jest.fn(),
+  let purchase: any;
+  let charge: any;
+  beforeEach(() => {
+    purchase = {
+      subscriptionId: 'sub',
+      paystackReference: ref,
+      currency: 'NGN',
+      expectedAmountKobo: 5000000,
+      expectedEmail: 'owner@example.test',
+      purchasedPlan: 'BASIC',
+      billingCycle: 'yearly',
+      createdAt: new Date(),
+      subscription: { businessId: 'business', business: { ownerId: 'owner' } },
     };
-
-    const mockPaystackService = {
+    charge = {
+      id: 123,
+      status: 'success',
+      reference: ref,
+      currency: 'NGN',
+      amount: 5000000,
+      paid_at: new Date().toISOString(),
+      metadata: { businessId: 'business', planName: 'BASIC' },
+      customer: { email: 'owner@example.test', customer_code: 'CUS_test' },
+    };
+    repo = {
+      findPayment: jest.fn().mockResolvedValue(purchase),
+      fulfill: jest.fn(),
+      findByBusinessId: jest
+        .fn()
+        .mockResolvedValue({ id: 'sub', status: 'TRIAL' }),
+      findPlanByName: jest
+        .fn()
+        .mockResolvedValue({
+          name: 'BASIC',
+          priceNgn: 50000,
+          billingCycle: 'yearly',
+          paystackPlanCode: 'PLN_test',
+        }),
+      createPayment: jest.fn(),
+      receiveEvent: jest.fn(),
+      expire: jest.fn(),
+      dueEvents: jest.fn().mockResolvedValue([]),
+      claimEvent: jest.fn().mockResolvedValue({ count: 1 }),
+      finishEvent: jest.fn(),
+      retryEvent: jest.fn(),
+    };
+    provider = {
+      verifyTransaction: jest.fn().mockResolvedValue({ data: charge }),
       initializeTransaction: jest.fn(),
-      verifyTransaction: jest.fn(),
-      validateWebhookSignature: jest.fn(),
+      assertTestCheckout: jest.fn(),
+      validateWebhookSignature: jest.fn().mockReturnValue(true),
     };
-
-    const mockAuthRepo = {
-      findUserById: jest.fn(),
-    };
-
-    const mockBusinessService = {
-      getBusinessProfile: jest.fn(),
-    };
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SubscriptionService,
-        { provide: SubscriptionRepository, useValue: mockSubRepo },
-        { provide: PaystackService, useValue: mockPaystackService },
-        { provide: AuthRepository, useValue: mockAuthRepo },
-        { provide: BusinessService, useValue: mockBusinessService },
-      ],
-    }).compile();
-
-    service = module.get<SubscriptionService>(SubscriptionService);
-    subRepo = module.get(SubscriptionRepository);
-    paystackService = module.get(PaystackService);
-    authRepo = module.get(AuthRepository);
-    businessService = module.get(BusinessService);
+    service = new SubscriptionService(
+      repo as unknown as SubscriptionRepository,
+      provider as unknown as PaystackService,
+      {
+        findUserById: jest
+          .fn()
+          .mockResolvedValue({ email: 'owner@example.test' }),
+      } as unknown as AuthRepository,
+      {
+        getBusinessProfile: jest.fn().mockResolvedValue({ ownerId: 'owner' }),
+      } as unknown as BusinessService,
+      new ConfigService({ frontendUrl: 'http://localhost:3000' }),
+    );
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  it('checks ownership before any provider request', async () => {
+    await expect(service.verifyPayment('stranger', ref)).rejects.toThrow(
+      'Payment not found',
+    );
+    expect(provider.verifyTransaction).not.toHaveBeenCalled();
   });
-
-  describe('initiateSubscription', () => {
-    it('should successfully initiate subscription checkout', async () => {
-      businessService.getBusinessProfile.mockResolvedValue(mockBusiness);
-      authRepo.findUserById.mockResolvedValue(mockUser);
-      subRepo.findPlanByName.mockResolvedValue(mockPlan);
-      subRepo.findByBusinessId.mockResolvedValue(mockSubscription);
-      
-      paystackService.initializeTransaction.mockResolvedValue({
-        status: true,
-        message: 'Success',
-        data: {
-          authorization_url: 'https://checkout.paystack.com/mock',
-          access_code: 'access-123',
-          reference: 'ref-123',
-        },
-      });
-
-      const result = await service.initiateSubscription('user-id-123', 'business-id-123', {
-        plan: 'BASIC' as any,
-        callbackUrl: 'http://localhost/callback',
-      });
-
-      expect(businessService.getBusinessProfile).toHaveBeenCalledWith('business-id-123');
-      expect(authRepo.findUserById).toHaveBeenCalledWith('user-id-123');
-      expect(subRepo.findPlanByName).toHaveBeenCalledWith(SubscriptionPlan.BASIC);
-      expect(paystackService.initializeTransaction).toHaveBeenCalled();
-      expect(subRepo.createPaymentRecord).toHaveBeenCalledWith({
-        subscriptionId: 'sub-id-123',
-        amountNgn: 50000,
-        paystackReference: 'ref-123',
-        paystackStatus: 'PENDING',
-        metadata: { plan: SubscriptionPlan.BASIC },
-      });
-
-      expect(result).toEqual({
-        authorizationUrl: 'https://checkout.paystack.com/mock',
-        reference: 'ref-123',
-      });
-    });
-
-    it('should throw NotFoundException if business not owned by user', async () => {
-      businessService.getBusinessProfile.mockResolvedValue({
-        ...mockBusiness,
-        ownerId: 'another-user',
-      });
-
-      await expect(
-        service.initiateSubscription('user-id-123', 'business-id-123', {
-          plan: 'BASIC' as any,
-          callbackUrl: 'http://localhost/callback',
-        }),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw BadRequestException if plan not configured in database', async () => {
-      businessService.getBusinessProfile.mockResolvedValue(mockBusiness);
-      authRepo.findUserById.mockResolvedValue(mockUser);
-      subRepo.findPlanByName.mockResolvedValue(null);
-
-      await expect(
-        service.initiateSubscription('user-id-123', 'business-id-123', {
-          plan: 'BASIC' as any,
-          callbackUrl: 'http://localhost/callback',
-        }),
-      ).rejects.toThrow(BadRequestException);
-    });
+  it('verifies a known purchase and delegates atomic fulfilment', async () => {
+    expect((await service.verifyPayment('owner', ref)).success).toBe(true);
+    expect(repo.fulfill).toHaveBeenCalledWith(ref, charge);
   });
-
-  describe('verifyPayment', () => {
-    it('should successfully verify and activate subscription', async () => {
-      paystackService.verifyTransaction.mockResolvedValue({
-        status: true,
-        message: 'Verified',
-        data: {
-          status: 'success',
-          reference: 'ref-123',
-          amount: 5000000,
-          paid_at: '2026-06-13T12:00:00Z',
-          metadata: {
-            businessId: 'business-id-123',
-            planName: SubscriptionPlan.BASIC,
-          },
-          customer: { customer_code: 'cust-123', email: 'test@example.com' },
-          authorization: { authorization_code: 'auth-123', reusable: true },
-        },
-      } as any);
-
-      const result = await service.verifyPayment('ref-123');
-
-      expect(paystackService.verifyTransaction).toHaveBeenCalledWith('ref-123');
-      expect(subRepo.updateSubscriptionStatus).toHaveBeenCalledWith('business-id-123', expect.objectContaining({
-        status: SubscriptionStatus.ACTIVE,
+  it.each([
+    { amount: 1 },
+    { currency: 'USD' },
+    { reference: 'other' },
+    { status: 'failed' },
+    { customer: { email: 'other@example.test', customer_code: 'CUS_wrong' } },
+    { customer: {} },
+    { metadata: { businessId: 'other', planName: 'BASIC' } },
+    { metadata: null },
+    { paid_at: 'invalid' },
+    { paid_at: '2099-01-01' },
+    { id: null },
+  ])('rejects mismatched provider details: %j', async (override) => {
+    Object.assign(charge, override);
+    await expect(service.verifyPayment('owner', ref)).rejects.toThrow(
+      'details do not match',
+    );
+    expect(repo.fulfill).not.toHaveBeenCalled();
+  });
+  it('does not auto-fulfil historical purchases without snapshots', async () => {
+    purchase.expectedAmountKobo = null;
+    await expect(service.verifyPayment('owner', ref)).rejects.toThrow();
+    expect(repo.fulfill).not.toHaveBeenCalled();
+  });
+  it('returns recorded success on replay without touching entitlement', async () => {
+    purchase.fulfilledAt = new Date();
+    await service.verifyPayment('owner', ref);
+    expect(provider.verifyTransaction).not.toHaveBeenCalled();
+    expect(repo.fulfill).not.toHaveBeenCalled();
+  });
+  it('rejects callback URLs outside the configured origin', async () => {
+    await expect(
+      service.initiateSubscription('owner', 'business', {
         plan: SubscriptionPlan.BASIC,
-      }));
-      expect(subRepo.updatePaymentRecord).toHaveBeenCalledWith('ref-123', expect.objectContaining({
-        paystackStatus: 'SUCCESS',
-      }));
-
-      expect(result).toEqual({ success: true, message: 'Payment verified successfully' });
-    });
-
-    it('should return failure message if transaction was not successful', async () => {
-      paystackService.verifyTransaction.mockResolvedValue({
-        status: true,
-        message: 'Failed',
-        data: {
-          status: 'failed',
-          reference: 'ref-123',
-        },
-      } as any);
-
-      const result = await service.verifyPayment('ref-123');
-      expect(result).toEqual({ success: false, message: 'Payment not successful' });
-    });
+        callbackUrl: 'https://attacker.test/return',
+      }),
+    ).rejects.toThrow('Invalid callback');
+    expect(repo.createPayment).not.toHaveBeenCalled();
   });
-
-  describe('checkExpiredSubscriptions', () => {
-    it('should query and transition expired trials and active subscriptions', async () => {
-      const expiredTrialSub = { businessId: 'expired-trial-id' } as any;
-      const expiredActiveSub = { businessId: 'expired-active-id' } as any;
-
-      subRepo.findExpiredSubscriptions.mockImplementation(async (status) => {
-        if (status === SubscriptionStatus.TRIAL) {
-          return [expiredTrialSub];
-        }
-        if (status === SubscriptionStatus.ACTIVE) {
-          return [expiredActiveSub];
-        }
-        return [];
-      });
-
-      await service.checkExpiredSubscriptions();
-
-      expect(subRepo.findExpiredSubscriptions).toHaveBeenCalledWith(SubscriptionStatus.TRIAL, expect.any(Date));
-      expect(subRepo.findExpiredSubscriptions).toHaveBeenCalledWith(SubscriptionStatus.ACTIVE, expect.any(Date));
-
-      expect(subRepo.updateSubscriptionStatus).toHaveBeenCalledWith('expired-trial-id', {
-        status: SubscriptionStatus.EXPIRED,
-      });
-      expect(subRepo.updateSubscriptionStatus).toHaveBeenCalledWith('expired-active-id', {
-        status: SubscriptionStatus.EXPIRED,
-      });
-    });
+  it('persists a recoverable snapshot before provider initialization, including timeout', async () => {
+    provider.initializeTransaction.mockRejectedValue(new Error('Timeout'));
+    await expect(
+      service.initiateSubscription('owner', 'business', {
+        plan: SubscriptionPlan.BASIC,
+        callbackUrl: 'http://localhost:3000/dashboard/subscription',
+      }),
+    ).rejects.toThrow('Timeout');
+    expect(repo.createPayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedAmountKobo: 5000000,
+        expectedEmail: 'owner@example.test',
+        purchasedPlan: 'BASIC',
+        paystackReference: expect.stringMatching(/^nexora-/),
+      }),
+    );
+    expect(repo.createPayment.mock.invocationCallOrder[0]).toBeLessThan(
+      provider.initializeTransaction.mock.invocationCallOrder[0],
+    );
+  });
+  it('rejects trial checkout', async () => {
+    await expect(
+      service.initiateSubscription('owner', 'business', {
+        plan: SubscriptionPlan.TRIAL,
+        callbackUrl: 'http://localhost:3000/dashboard',
+      }),
+    ).rejects.toThrow('Unsupported plan');
+  });
+  it('does not acknowledge receipt if the database write fails', async () => {
+    repo.receiveEvent.mockRejectedValue(new Error('Database down'));
+    await expect(
+      service.handleWebhook(
+        'signature',
+        Buffer.from('{"event":"charge.success","data":{"reference":"x"}}'),
+      ),
+    ).rejects.toThrow('Database down');
+  });
+  it('retries durable work when verification fails, without claiming success', async () => {
+    repo.dueEvents.mockResolvedValue([
+      { id: 'event', event: 'charge.success', reference: ref, attempts: 0 },
+    ]);
+    provider.verifyTransaction.mockRejectedValue(new Error('Timeout'));
+    await service.recoverPendingEvents();
+    expect(repo.retryEvent).toHaveBeenCalledWith('event', 1);
+    expect(repo.finishEvent).not.toHaveBeenCalled();
+  });
+  it('quarantines lifecycle events without removing paid access', async () => {
+    repo.dueEvents.mockResolvedValue([
+      { id: 'event', event: 'subscription.disable', attempts: 0 },
+    ]);
+    await service.recoverPendingEvents();
+    expect(repo.finishEvent).toHaveBeenCalledWith('event', 'REVIEW');
+    expect(repo.fulfill).not.toHaveBeenCalled();
   });
 });

@@ -23,7 +23,7 @@ Scope: shared-business SaaS with account credentials, visitor PII, subscription 
 4. Successful payments update subscription then payment without a shared transaction or fulfilment guard. Verify persisted reference, expected amount in kobo, NGN currency, intended tenant/plan/customer and provider status before an atomic fulfilment.
 5. **Addressed in tenant-safety follow-up:** production configuration rejects missing/default/placeholder or identical JWT secrets and invalid database/frontend origins.
 
-Payment findings 3/4 remain launch blockers. Media ownership, complete session-token hardening and deployed cookie topology remain open. Cookie writes now require the configured Origin; nonbrowser server requests without session cookies remain allowed. Public replies use explicit profile/catalogue projections; enquiry capture returns only a receipt ID. Unexpected database errors no longer expose their message to callers.
+Payment findings 3/4 are addressed for known initial purchases; see BILLING_ROLLOUT.md. Recurring lifecycle/refund processing and a genuine provider sandbox exercise remain live-launch blockers. Media ownership, complete session-token hardening and deployed cookie topology remain open. Cookie writes now require the configured Origin; nonbrowser server requests without session cookies remain allowed. Public replies use explicit profile/catalogue projections; enquiry capture returns only a receipt ID. Unexpected database errors no longer expose their message to callers.
 Database negative/rollback/concurrency checks run in an isolated PostgreSQL CI job; see VERIFICATION.md for actual execution status.
 
 ## Auth hardening

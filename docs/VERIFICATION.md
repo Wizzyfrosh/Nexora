@@ -1,5 +1,13 @@
 # Verification report — 15 October 2026
 
+## Payment hardening follow-up
+
+- Local monorepo build: 3/3 workspaces pass (unchanged web/shared builds cached).
+- API unit suite: 11 suites, 102 tests pass. Full API TypeScript check including integration sources passes; diff whitespace check passes.
+- PostgreSQL billing regressions added alongside the 18 tenant tests: replay/concurrency, distinct purchases, owner isolation, raw HTTP signature, mismatches, rollback, durable retry/reconciliation, suspension and expiry races.
+- Disposable CI now applies both SQL migrations and checks schema drift. Execution result will be recorded after CI completes.
+- No production database changes or live charges. Provider HTTP is mocked in automated integration tests; a real Paystack sandbox exercise and recurring lifecycle/refund gates remain open. See BILLING_ROLLOUT.md.
+
 ## Tenant-safety follow-up
 
 - `npm run test --workspace api -- --runInBand`: 10 suites, 79 unit tests passed.

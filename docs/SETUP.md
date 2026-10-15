@@ -34,11 +34,11 @@ Run twice. Keep output private.
 
 ## 3. Database
 
-Inspect existing migration history and target database before changing it. This repo currently has a schema, not a verified production migration rollout.
+Inspect migration history and target database before changing it. Read BILLING_ROLLOUT.md for the baseline adoption procedure if tables already exist. Never apply the baseline blindly to an existing database.
 For an empty local development database only:
 
 ```sh
-npm exec --workspace api -- prisma migrate dev --schema prisma/schema.prisma --name initial
+npm exec --workspace api -- prisma migrate deploy --schema prisma/schema.prisma
 ```
 
 Review generated migration SQL. Never use this command against production.

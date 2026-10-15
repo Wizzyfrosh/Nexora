@@ -1,119 +1,106 @@
-import { Injectable, Logger, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as crypto from 'crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
-export interface PaystackInitResponse {
-  status: boolean;
-  message: string;
-  data: {
-    authorization_url: string;
-    access_code: string;
-    reference: string;
-  };
-}
-
-export interface PaystackVerifyResponse {
-  status: boolean;
-  message: string;
-  data: {
-    status: string;
-    reference: string;
-    amount: number;
-    gateway_response: string;
-    paid_at: string;
-    metadata: Record<string, any>;
-    customer: {
-      customer_code: string;
-      email: string;
-    };
-    authorization: {
-      authorization_code: string;
-      reusable: boolean;
-    };
-  };
+export interface PaystackCharge {
+  id: number | string;
+  status: string;
+  reference: string;
+  amount: number;
+  currency: string;
+  paid_at: string;
+  metadata: { businessId?: string; planName?: string } | null;
+  customer: { customer_code: string; email: string };
 }
 
 @Injectable()
 export class PaystackService {
-  private readonly logger = new Logger(PaystackService.name);
   private readonly secretKey: string;
-  private readonly baseUrl = 'https://api.paystack.co';
-
-  constructor(private configService: ConfigService) {
-    this.secretKey = this.configService.get<string>('paystack.secretKey') || '';
+  constructor(config: ConfigService) {
+    this.secretKey = config.get<string>('paystack.secretKey') || '';
   }
 
-  /**
-   * Initializes a transaction on Paystack
-   */
-  async initializeTransaction(email: string, amountKobo: number, planCode: string, callbackUrl: string, metadata: any): Promise<PaystackInitResponse> {
-    if (!this.secretKey) {
-      throw new InternalServerErrorException('Paystack is not configured');
+  assertTestCheckout() {
+    // Live checkout stays closed until recurring lifecycle/refund/reconciliation gates pass.
+    if (!this.secretKey.startsWith('sk_test_')) {
+      throw new ServiceUnavailableException(
+        'Only Paystack test checkout is enabled',
+      );
     }
+  }
 
+  private async request(path: string, body?: Record<string, unknown>) {
+    if (!this.secretKey)
+      throw new ServiceUnavailableException('Paystack is not configured');
     try {
-      const response = await fetch(`${this.baseUrl}/transaction/initialize`, {
-        method: 'POST',
+      const response = await fetch('https://api.paystack.co' + path, {
+        method: body ? 'POST' : 'GET',
         headers: {
-          Authorization: `Bearer ${this.secretKey}`,
+          Authorization: 'Bearer ' + this.secretKey,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email,
-          amount: amountKobo,
-          plan: planCode,
-          callback_url: callbackUrl,
-          metadata,
-        }),
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(8000),
       });
-
       const result = await response.json();
-      if (!result.status) {
-        throw new BadRequestException(result.message);
-      }
+      if (!response.ok || result.status !== true || !result.data)
+        throw new Error('Provider unavailable');
       return result;
-    } catch (error) {
-      this.logger.error(`Paystack initialization failed: ${error.message}`);
-      throw new InternalServerErrorException('Failed to initialize payment');
+    } catch {
+      throw new ServiceUnavailableException(
+        'Payment provider unavailable; retry verification later',
+      );
     }
   }
 
-  /**
-   * Verifies a transaction on Paystack
-   */
-  async verifyTransaction(reference: string): Promise<PaystackVerifyResponse> {
-    if (!this.secretKey) {
-      throw new InternalServerErrorException('Paystack is not configured');
-    }
-
+  async initializeTransaction(
+    email: string,
+    amount: number,
+    plan: string,
+    callbackUrl: string,
+    reference: string,
+    metadata: { businessId: string; planName: string },
+  ) {
+    this.assertTestCheckout();
+    const result = await this.request('/transaction/initialize', {
+      email,
+      amount,
+      currency: 'NGN',
+      plan,
+      callback_url: callbackUrl,
+      reference,
+      metadata,
+    });
+    let url: URL;
     try {
-      const response = await fetch(`${this.baseUrl}/transaction/verify/${reference}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.secretKey}`,
-        },
-      });
-
-      const result = await response.json();
-      if (!result.status) {
-        throw new BadRequestException(result.message);
-      }
-      return result;
-    } catch (error) {
-      this.logger.error(`Paystack verification failed: ${error.message}`);
-      throw new InternalServerErrorException('Failed to verify payment');
+      url = new URL(result.data.authorization_url);
+    } catch {
+      throw new ServiceUnavailableException('Invalid checkout response');
     }
+    if (
+      result.data.reference !== reference ||
+      url.origin !== 'https://checkout.paystack.com' ||
+      url.username ||
+      url.password
+    ) {
+      throw new ServiceUnavailableException('Invalid checkout response');
+    }
+    return { data: { reference, authorization_url: url.href } };
   }
 
-  /**
-   * Validates webhook signature
-   */
-  validateWebhookSignature(signature: string, payload: any): boolean {
-    const hash = crypto
-      .createHmac('sha512', this.secretKey)
-      .update(JSON.stringify(payload))
-      .digest('hex');
-    
-    return hash === signature;
+  async verifyTransaction(
+    reference: string,
+  ): Promise<{ data: PaystackCharge }> {
+    return this.request('/transaction/verify/' + encodeURIComponent(reference));
+  }
+
+  validateWebhookSignature(
+    signature: string | undefined,
+    raw: Buffer | undefined,
+  ): boolean {
+    if (!this.secretKey || !raw || !/^[a-fA-F0-9]{128}$/.test(signature || ''))
+      return false;
+    const expected = createHmac('sha512', this.secretKey).update(raw).digest();
+    return timingSafeEqual(expected, Buffer.from(signature!, 'hex'));
   }
 }
