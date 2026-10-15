@@ -1,6 +1,7 @@
 # Billing and entitlement specification
 
 Payments are for Nexora owner subscriptions. Buyer checkout is out of scope.
+Known-purchase hardening is implemented; live checkout remains blocked. See BILLING_ROLLOUT.md for exact delivered behavior, migration adoption, recovery and remaining recurring/refund launch gates. The lifecycle below is the complete target, not a claim that every provider event is automated.
 Annual pricing from PRD.txt: Basic NGN 50,000; Premium NGN 120,000. Paystack amounts use kobo: 5,000,000 and 12,000,000 respectively. Snapshot expected prices server-side at purchase creation.
 
 ## Payment lifecycle (required)
