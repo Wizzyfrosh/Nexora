@@ -513,7 +513,7 @@ export default function ProductsPage() {
       {/* Add / Edit Product Modal */}
       {showProductDialog && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <Card className="w-full max-w-xl glass animate-in zoom-in-95 duration-150 my-8">
+          <Card className="w-full max-w-xl bg-white shadow-xl my-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <CardHeader className="flex flex-row justify-between items-start pb-4 border-b">
               <div>
                 <CardTitle className="text-lg font-bold">

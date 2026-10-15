@@ -472,7 +472,9 @@
   display: none;
 }
 .workspace-content > div:not(.workspace-home) {
-  animation: workspace-in 0.35s ease both;
+  /* Do not retain an animated transform: it traps fixed catalogue dialogs in
+     the content box instead of the viewport. */
+  animation: workspace-in 0.35s ease backwards;
 }
 .workspace-stat > div,
 .workspace-stat small,

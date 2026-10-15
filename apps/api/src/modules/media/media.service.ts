@@ -13,6 +13,7 @@ import { sanitizeImage } from './media-image';
 export class MediaService implements OnModuleInit, OnModuleDestroy {
   private timer?: NodeJS.Timeout;
   private cleaning = false;
+  private activeUploads = 0;
   constructor(
     private readonly repo: MediaRepository,
     private readonly transport: CloudinaryTransport,
@@ -33,6 +34,18 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
     return this.repo.remove(businessId, id);
   }
   async upload(businessId: string, buffer: Buffer, mime: string) {
+    // Keep the CPU/provider slot until the actual promise settles, even if a
+    // disconnected HTTP subscriber releases its multipart-buffering slot early.
+    if (this.activeUploads >= 2)
+      throw new ServiceUnavailableException('Uploads are busy; retry shortly');
+    this.activeUploads++;
+    try {
+      return await this.uploadFile(businessId, buffer, mime);
+    } finally {
+      this.activeUploads--;
+    }
+  }
+  private async uploadFile(businessId: string, buffer: Buffer, mime: string) {
     this.transport.configured();
     const image = await sanitizeImage(buffer, mime);
     const intent = await this.repo.reserve(businessId);
