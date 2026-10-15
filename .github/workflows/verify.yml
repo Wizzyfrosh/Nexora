@@ -27,7 +27,8 @@ jobs:
       # Generate/build first, then prove runtime imports survive a production-only prune.
       - run: npm prune --omit=dev --ignore-scripts --no-audit
       - name: Production API import smoke test (no server or database connection)
-        run: node -e "require('node:assert/strict').equal(typeof require('@prisma/client').PrismaClient, 'function'); require('./apps/api/dist/app.module.js'); console.log('Production API imports passed')"
+        working-directory: apps/api
+        run: node -e "const assert = require('node:assert/strict'); assert.equal(require('./package.json').scripts['start:prod'], 'node dist/src/main.js'); assert.ok(require('node:fs').existsSync('dist/src/main.js')); assert.equal(typeof require('@prisma/client').PrismaClient, 'function'); require('./dist/src/app.module.js'); console.log('Production API imports passed')"
   tenant-security-postgres:
     runs-on: ubuntu-latest
     timeout-minutes: 15

@@ -14,6 +14,7 @@ Baseline audit: 27 affected package entries (2 low, 5 moderate, 17 high, 3 criti
 | Next image/CSS pipeline | sharp 0.35.5, PostCSS 8.5.23, source-map-js 1.2.2, nanoid 3.3.20 | Updated through supported upstream dependency resolution, not forced cross-major overrides. |
 | Other runtime/tooling transitives | Compatible patches for fast-copy, form-data, fast-uri, brace-expansion, js-yaml, handlebars, browserslist and esbuild | Lockfile changes are regression-tested; no blind force-fix or dependency substitution. |
 | Prisma runtime client | Move @prisma/client from devDependencies to dependencies; version unchanged | Required by the running API. Generate the client during build before pruning development dependencies. |
+| API production entry point | `node dist/main` → `node dist/src/main.js` | Current TypeScript build emits under dist/src. Smoke-check the real start script and import from the API workspace so nested runtime dependencies resolve correctly. |
 
 After compatible fixes, the production audit reports zero findings. The full installed tree still reports 25 entries: 5 high and 20 moderate, propagated from two unpatched development-tooling roots:
 
