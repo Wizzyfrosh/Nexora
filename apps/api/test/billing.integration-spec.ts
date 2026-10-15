@@ -479,6 +479,64 @@ describe('Billing on isolated PostgreSQL (only provider transport mocked)', () =
     ).toBeNull();
   });
 
+  it('rejects owner substitution on status and cancellation before touching the provider', async () => {
+    await agreement();
+    const other = await prisma.user.create({
+      data: {
+        email: randomUUID() + '@example.test',
+        passwordHash: 'unused',
+        firstName: 'Other',
+        lastName: 'Owner',
+      },
+    });
+    await prisma.business.update({
+      where: { id: businessId },
+      data: { ownerId: other.id },
+    });
+    await request(app.getHttpServer())
+      .get('/api/v1/subscriptions/' + businessId + '/status')
+      .set('Cookie', cookies)
+      .expect(403);
+    await request(app.getHttpServer())
+      .post('/api/v1/subscriptions/' + businessId + '/cancel-renewal')
+      .set('Cookie', cookies)
+      .set('Origin', origin)
+      .expect(403);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it('does not let a paid renewal reactivate a suspended business', async () => {
+    const data = await agreement();
+    const r = renewal(data);
+    await prisma.subscription.update({
+      where: { id: subId },
+      data: { status: 'SUSPENDED' },
+    });
+    await sendEvent('invoice.update', r.invoice);
+    await service.recoverPendingEvents();
+    expect(
+      (await prisma.subscription.findUniqueOrThrow({ where: { id: subId } }))
+        .status,
+    ).toBe('SUSPENDED');
+    expect(await repo.findPayment(r.charge.reference)).toBeNull();
+  });
+
+  it('ignores a fetched provider snapshot older than the saved renewal state', async () => {
+    const data = await agreement();
+    const stale = structuredClone(data);
+    data.status = 'non-renewing';
+    data.updatedAt = new Date(Date.now() + 1000).toISOString();
+    await sendEvent('subscription.not_renew', {
+      subscription_code: data.subscription_code,
+    });
+    await service.recoverPendingEvents();
+    const linked = await repo.findLinked(data.subscription_code);
+    await repo.linkAndSync(linked!.billingAnchorPayment!, stale);
+    expect((await repo.findLinked(data.subscription_code))!.renewalStatus).toBe(
+      'non-renewing',
+    );
+  });
+
   it('persists the immutable purchase and recovery work before checkout opens', async () => {
     await prisma.plan.upsert({
       where: { name: 'BASIC' },

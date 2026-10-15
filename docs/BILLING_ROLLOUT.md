@@ -12,7 +12,7 @@ Exact raw-body HMAC-SHA512 and constant-time comparison protect webhook receipt.
 
 Checkout rejects all keys except sk_test_ credentials. No live checkout has been enabled or exercised. Genuine Paystack sandbox checkout still requires the owner's test account, matching annual provider plan code/price and a reachable webhook. Automated integration tests mock provider transport, not PostgreSQL or authentication.
 
-Recurring renewals with unknown references, subscription lifecycle, refunds and disputes are retained for review; they cannot grant access or prematurely suspend already-paid time. The inbox records provider object IDs when available for operator lookup. authorization_code is never saved as paystackSubscriptionId. Automatic subscription-code mapping and lifecycle processing remain a later billing slice. A REVIEW row is not a completed refund/cancellation. Do not remove the live guard before these policies, monitoring, staging exercise and launch approval exist.
+The recurring follow-up in RECURRING_BILLING.md now processes renewals and lifecycle changes when exact transaction/invoice mapping exists. Unproven mappings, refunds and disputes remain review-only. The inbox records provider object IDs for lookup; authorization_code is never saved as paystackSubscriptionId. A REVIEW row is not a completed refund/cancellation. Do not remove the live guard before policies, monitoring, staging exercise and launch approval exist.
 
 ## Migrations
 

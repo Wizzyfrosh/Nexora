@@ -11,7 +11,6 @@ import { createHash, randomUUID } from 'node:crypto';
 import { SubscriptionRepository } from './subscription.repository';
 import { PaystackService } from './paystack.service';
 import { SubscriptionPlan } from '@nexora/shared-types';
-import { SubscriptionPlan as PrismaPlan } from '@prisma/client';
 import { AuthRepository } from '../auth/auth.repository';
 import { BusinessService } from '../business/business.service';
 import { BillingLifecycleService } from './billing-lifecycle.service';
@@ -68,11 +67,11 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
       sub.status === 'ACTIVE' &&
       sub.currentPeriodEnd &&
       sub.currentPeriodEnd > new Date() &&
-      sub.plan !== dto.plan
+      sub.plan !== String(dto.plan)
     ) {
       throw new BadRequestException('Active plan changes require review');
     }
-    const plan = await this.subRepo.findPlanByName(dto.plan as PrismaPlan);
+    const plan = await this.subRepo.findPlanByName(dto.plan);
     if (
       !plan ||
       plan.deletedAt ||
@@ -183,12 +182,14 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
   async handleWebhook(signature: string | undefined, raw: Buffer | undefined) {
     if (!this.paystackService.validateWebhookSignature(signature, raw))
       throw new BadRequestException('Invalid signature');
-    let payload: {
-      event?: unknown;
-      data?: Record<string, any>;
-    };
+    const object = (value: unknown): Record<string, unknown> =>
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : {};
+    let payload: Record<string, unknown>;
     try {
-      payload = JSON.parse(raw!.toString('utf8'));
+      const decoded: unknown = JSON.parse(raw!.toString('utf8'));
+      payload = object(decoded);
     } catch {
       throw new BadRequestException('Invalid event');
     }
@@ -200,14 +201,14 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Invalid event');
     const field = (value: unknown): string | null =>
       typeof value === 'string' && value.length <= 200 ? value : null;
-    const data = payload.data;
-    const reference =
-      field(data?.reference) || field(data?.transaction?.reference);
+    const data = object(payload.data);
+    const transaction = object(data.transaction);
+    const subscription = object(data.subscription);
+    const customer = object(data.customer);
+    const reference = field(data.reference) || field(transaction.reference);
     // Durable minimal receipt only. Never keep card authorization in event storage.
     const objectId =
-      data?.subscription_code ??
-      data?.subscription?.subscription_code ??
-      data?.id;
+      data.subscription_code ?? subscription.subscription_code ?? data.id;
     const providerObjectId =
       (typeof objectId === 'string' || typeof objectId === 'number') &&
       String(objectId).length <= 200
@@ -220,12 +221,12 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
       providerObjectId,
       payload.event.startsWith('invoice.')
         ? {
-            subscriptionCode: field(data?.subscription?.subscription_code),
+            subscriptionCode: field(subscription.subscription_code),
             invoiceCode: field(data?.invoice_code),
             reference,
             amount: typeof data?.amount === 'number' ? data.amount : null,
-            currency: field(data?.transaction?.currency),
-            customerCode: field(data?.customer?.customer_code),
+            currency: field(transaction.currency),
+            customerCode: field(customer.customer_code),
             periodStart: field(data?.period_start),
             periodEnd: field(data?.period_end),
             paid: data?.paid === true || data?.paid === 1,

@@ -55,11 +55,11 @@ export class PaystackService {
     }
   }
 
-  private async request(
+  private async request<T>(
     path: string,
     body?: Record<string, unknown>,
     allowEmpty = false,
-  ) {
+  ): Promise<{ data: T }> {
     if (!this.secretKey)
       throw new ServiceUnavailableException('Paystack is not configured');
     try {
@@ -72,14 +72,18 @@ export class PaystackService {
         body: body ? JSON.stringify(body) : undefined,
         signal: AbortSignal.timeout(8000),
       });
-      const result = await response.json();
+      const value: unknown = await response.json();
+      const result =
+        value && typeof value === 'object'
+          ? (value as { status?: unknown; data?: unknown })
+          : {};
       if (
         !response.ok ||
         result.status !== true ||
         (!allowEmpty && !result.data)
       )
         throw new Error('Provider unavailable');
-      return result;
+      return { data: result.data as T };
     } catch {
       throw new ServiceUnavailableException(
         'Payment provider unavailable; retry verification later',
@@ -96,7 +100,10 @@ export class PaystackService {
     metadata: { businessId: string; planName: string },
   ) {
     this.assertTestCheckout();
-    const result = await this.request('/transaction/initialize', {
+    const result = await this.request<{
+      reference: string;
+      authorization_url: string;
+    }>('/transaction/initialize', {
       email,
       amount,
       currency: 'NGN',
@@ -125,15 +132,21 @@ export class PaystackService {
   async verifyTransaction(
     reference: string,
   ): Promise<{ data: PaystackCharge }> {
-    return this.request('/transaction/verify/' + encodeURIComponent(reference));
+    return this.request<PaystackCharge>(
+      '/transaction/verify/' + encodeURIComponent(reference),
+    );
   }
 
   fetchSubscription(code: string): Promise<{ data: PaystackSubscription }> {
-    return this.request('/subscription/' + encodeURIComponent(code));
+    return this.request<PaystackSubscription>(
+      '/subscription/' + encodeURIComponent(code),
+    );
   }
 
   fetchTransaction(id: string): Promise<{ data: PaystackCharge }> {
-    return this.request('/transaction/' + encodeURIComponent(id));
+    return this.request<PaystackCharge>(
+      '/transaction/' + encodeURIComponent(id),
+    );
   }
 
   async cancelSubscription(code: string, token: string) {

@@ -72,7 +72,9 @@ function BillingContent() {
       setVerifying(true);
       setActionError("");
       try {
-        await SubscriptionService.verifyPayment(value);
+        const result = await SubscriptionService.verifyPayment(value);
+        if (!result.success)
+          throw new Error(result.message || "Payment is not confirmed yet.");
         setNotice("Payment confirmed. Your paid access has been updated.");
         await refreshUser();
         await reload();

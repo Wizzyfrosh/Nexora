@@ -295,6 +295,15 @@ export class SubscriptionRepository {
             existing.fulfilledAt &&
             existing.providerTransactionId === String(charge.id),
         );
+        requireBilling(
+          !existing.providerInvoiceCode ||
+            existing.providerInvoiceCode === invoice.invoiceCode,
+        );
+        if (!existing.providerInvoiceCode)
+          await tx.payment.update({
+            where: { id: existing.id },
+            data: { providerInvoiceCode: invoice.invoiceCode },
+          });
         return; // Includes the initial invoice: never grant the first payment twice.
       }
       await tx.payment.create({

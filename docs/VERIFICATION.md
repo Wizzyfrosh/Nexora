@@ -3,7 +3,8 @@
 ## Recurring billing follow-up
 
 - Local: 123 unit tests across 12 suites pass; all three workspace builds pass. API type check including integration sources and targeted changed web lint pass.
-- Added PostgreSQL regressions for exact mapping, concurrent invoice replay, paid cancellation, failure/ordering, invalid evidence and latest-invoice recovery. Hosted CI execution pending.
+- Added PostgreSQL regressions for exact mapping, concurrent invoice replay, paid cancellation, failure/ordering, invalid evidence and latest-invoice recovery. Initial CI run 38791111034 passed 44 tests; final follow-up adds owner substitution, suspended-renewal and stale-snapshot regressions. Final hosted CI execution pending.
+- Targeted billing API lint now passes without unsafe-any errors. Chromium checks at 1440x1000 and 390x844 pass: confirmation/keep/cancel, disabled Premium, no invented metrics, failed verification then retry, no horizontal overflow or page errors. These use controlled HTTP fixtures, not a real provider session.
 - Added an additive SQL migration; CI applies all three migrations and checks schema drift on disposable PostgreSQL 16.
 - No provider account was charged or refunded. Provider transport remains mocked in automated tests. See RECURRING_BILLING.md for live launch blockers.
 
