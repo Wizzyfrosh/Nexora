@@ -3,6 +3,7 @@ import { SectionInput } from './website-input';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Prisma } from '@prisma/client';
+import { assertMediaOwnership, sectionMediaUrls } from '../../common/security/media';
 
 @Injectable()
 export class WebsiteRepository {
@@ -100,6 +101,7 @@ export class WebsiteRepository {
     sections: SectionInput[],
   ) {
     return this.prisma.$transaction(async (tx) => {
+      await assertMediaOwnership(tx, businessId, sections.flatMap(s => sectionMediaUrls(s.content)));
       // Parent row lock serializes complete saves; failures roll back every write.
       await tx.website.update({
         where: { id: websiteId, businessId, deletedAt: null },

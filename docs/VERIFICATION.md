@@ -1,5 +1,12 @@
 # Verification report — 15 October 2026
 
+## Secure media — 16 October 2026
+
+- API-mediated signed image upload, sanitization, transactional quota/ownership checks, attachment replacement, deferred cleanup and owner pickers implemented. Local workspace builds, unit tests and full API type check pass; final results/CI pending.
+- New media source, PostgreSQL test source and picker pass targeted lint without fixes. React review checked event-driven file upload, effect cleanup, explicit statuses/errors and labelled controls. Existing catalogue/settings pages retain unrelated legacy lint debt; no blanket lint claim.
+- Tests use real Sharp decoding and mock Cloudinary transport. Real provider credentials, CDN invalidation, production native-image runtime and deployed upload limits still require staging validation. Public-CDN media is not private storage; see MEDIA_SECURITY.md.
+- Fifth migration is additive and marks old registry rows LEGACY, not READY. No production database or real provider upload/delete was touched.
+
 ## Dependency maintenance — 16 October 2026
 
 - Fresh `npm ci --no-audit`, shared build, Prisma client generation, all three workspace builds, full API TypeScript check and 129 unit tests pass locally. No framework-major, React or Prisma version migration; Next and its lint configuration move together to 16.4.2.

@@ -3,7 +3,7 @@
 // Base fetch wrapper with credentials, headers, error handling
 // ============================================================
 
-const API_URL =
+export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 let refreshing: Promise<boolean> | null = null;
 async function refreshSession(): Promise<boolean> {

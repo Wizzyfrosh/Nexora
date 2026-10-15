@@ -1,4 +1,5 @@
 import { assertCategoryOwnership } from '../../common/security/category';
+import { assertMediaOwnership } from '../../common/security/media';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Prisma, ProductAvailability } from '@prisma/client';
@@ -96,6 +97,7 @@ export class ProductRepository {
   ) {
     return this.prisma.$transaction(async (tx) => {
       await assertCategoryOwnership(tx, businessId, data.categoryId);
+      await assertMediaOwnership(tx, businessId, data.images?.map(i => i.url) || []);
       return tx.product.create({
         data: {
           businessId,
@@ -127,6 +129,7 @@ export class ProductRepository {
   async updateProduct(id: string, businessId: string, data: UpdateProductDto) {
     return this.prisma.$transaction(async (tx) => {
       await assertCategoryOwnership(tx, businessId, data.categoryId);
+      await assertMediaOwnership(tx, businessId, data.images?.map(i => i.url) || []);
       return tx.product.update({
         where: { id, businessId, deletedAt: null },
         data: {
@@ -143,6 +146,9 @@ export class ProductRepository {
           availability: data.availability as ProductAvailability,
           isFeatured: data.isFeatured,
           categoryId: data.categoryId,
+          images: data.images === undefined ? undefined : {
+            deleteMany: {}, create: data.images.map(i => ({ url: i.url, altText: i.altText, order: i.order })),
+          },
         },
         include: {
           images: true,

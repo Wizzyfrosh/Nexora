@@ -1,4 +1,5 @@
 import { assertCategoryOwnership } from '../../common/security/category';
+import { assertMediaOwnership } from '../../common/security/media';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -52,6 +53,7 @@ export class ServiceRepository {
   ) {
     return this.prisma.$transaction(async (tx) => {
       await assertCategoryOwnership(tx, businessId, data.categoryId);
+      await assertMediaOwnership(tx, businessId, data.images || []);
       return tx.service.create({
         data: {
           businessId,
@@ -77,6 +79,7 @@ export class ServiceRepository {
   async updateService(id: string, businessId: string, data: UpdateServiceDto) {
     return this.prisma.$transaction(async (tx) => {
       await assertCategoryOwnership(tx, businessId, data.categoryId);
+      await assertMediaOwnership(tx, businessId, data.images || []);
       return tx.service.update({
         where: { id, businessId, deletedAt: null },
         data: {
@@ -91,6 +94,7 @@ export class ServiceRepository {
           priceLabel: data.priceLabel,
           isFeatured: data.isFeatured,
           categoryId: data.categoryId,
+          images: data.images,
         },
         include: {
           category: true,

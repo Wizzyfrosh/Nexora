@@ -30,6 +30,8 @@ Local API build/type checks and 79 unit tests pass. The disposable PostgreSQL 16
 
 ## Still incomplete / launch blockers
 
+Secure media follow-up implements API-mediated signed Cloudinary image upload, bounded decode/re-encode, tenant quota reservations, verified ownership on catalogue/branding/section writes, image picker integration and durable safe deletion. See MEDIA_SECURITY.md: these are public catalogue assets, not private documents. Provider/staging delivery, CDN invalidation and operational cleanup monitoring remain unverified. Legacy URLs require inventory/re-upload; no production migration was performed.
+
 Account follow-up implements hashed action/session tokens, atomic claims/rotation, replay-family revocation, reset/logout access revocation, encrypted SMTP outbox and recovery/verification screens. See ACCOUNT_SECURITY.md for cutover requirements and exact limitations. Real inbox delivery and deployed cookie checks remain unverified; media is not included in this slice.
 
 Recurring follow-up now implements transaction-linked provider mapping, verified invoice renewal, separate renewal metadata, durable owner cancellation and periodic latest-invoice sync. Billing UI uses real status and removes invented metrics/unreleased-feature claims. CI run 38791724375 passed 123 unit tests, 47 PostgreSQL integration tests, builds, three migrations and zero schema drift. Desktop/mobile browser fixture checks and targeted API/web lint passed locally. See RECURRING_BILLING.md for remaining live gates; provider mapping without an exact invoice/transaction remains review-only.
@@ -41,7 +43,7 @@ Payment follow-up: known-purchase verification, raw webhook signatures, durable 
 | P0 | Billing launch | Initial and provably mapped recurring purchases have verified replay-safe fulfilment. Live checkout is blocked. Unproven mappings, refund/dispute policy, operator alerts and genuine sandbox checkout remain open; see RECURRING_BILLING.md. |
 | P0 | Dependency release review | Compatible updates remove all reported production findings and critical findings. Two unpatched development-tooling roots still produce 25 affected entries (5 high, 20 moderate); upstream remediation or an explicit release risk decision remains required. See DEPENDENCIES.md and VERIFICATION.md. |
 | P1 | Public renderer | Canonical /@slug SSR page and complete publish-to-contact workflow. |
-| P1 | Identity and uploads | Session rotation and atomic reset/verification are implemented. Real SMTP inbox validation, operational mail monitoring and verified media ownership remain open. |
+| P1 | Identity and uploads | Session rotation, atomic reset/verification and registered media ownership are implemented. Real SMTP/Cloudinary staging checks, deployed cookies, legacy media inventory and operational queue monitoring remain open. |
 | P1 | Runtime integration | Deployed cookie topology, email, provider accounts and production database remain unverified. |
 | P1 | Analytics | Ingestion, aggregation, dashboard and privacy controls remain incomplete. |
 | P2 | Domains/staff/admin | DNS verification, granular roles and audited operations remain later milestones. |

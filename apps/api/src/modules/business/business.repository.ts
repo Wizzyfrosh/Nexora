@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { UpdateBusinessDto, CreateBusinessDto } from '@nexora/shared-types';
 import { Prisma } from '@prisma/client';
+import { assertMediaOwnership } from '../../common/security/media';
 
 @Injectable()
 export class BusinessRepository {
@@ -62,7 +63,9 @@ export class BusinessRepository {
   }
 
   async update(id: string, data: UpdateBusinessDto) {
-    return this.prisma.business.update({
+    return this.prisma.$transaction(async tx => {
+      await assertMediaOwnership(tx, id, [data.logoUrl, data.bannerUrl].filter((v): v is string => !!v));
+      return tx.business.update({
       where: { id },
       data: {
         name: data.name,
@@ -77,6 +80,7 @@ export class BusinessRepository {
         bannerUrl: data.bannerUrl,
         isPublished: data.isPublished,
       },
+      });
     });
   }
 

@@ -1,4 +1,5 @@
 "use client";
+import { MediaPicker } from "@/components/media-picker";
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/contexts/AuthContext";
@@ -58,7 +59,6 @@ export default function ServicesPage() {
   const [srvCategoryId, setSrvCategoryId] = useState("");
   const [srvIsFeatured, setSrvIsFeatured] = useState(false);
   const [srvImages, setSrvImages] = useState<string[]>([]);
-  const [newImageUrl, setNewImageUrl] = useState("");
 
   // Category Form Fields
   const [catName, setCatName] = useState("");
@@ -123,15 +123,7 @@ export default function ServicesPage() {
   };
 
   // Image helpers
-  const addImage = () => {
-    if (!newImageUrl.trim()) return;
-    setSrvImages([...srvImages, newImageUrl.trim()]);
-    setNewImageUrl("");
-  };
 
-  const removeImage = (idx: number) => {
-    setSrvImages(srvImages.filter((_, i) => i !== idx));
-  };
 
   // Form submits
   const handleSaveService = async (e: React.FormEvent) => {
@@ -159,7 +151,8 @@ export default function ServicesPage() {
           price: priceNum,
           priceLabel: srvPriceLabel || undefined,
           categoryId: srvCategoryId || undefined,
-          isFeatured: srvIsFeatured
+          isFeatured: srvIsFeatured,
+          images: srvImages
         });
       } else {
         // Create service
@@ -588,55 +581,7 @@ export default function ServicesPage() {
 
                 <hr className="border-border/60" />
 
-                {/* Gallery Images */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Service Gallery Images</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      placeholder="Paste image URL (e.g. https://unsplash.com/...)" 
-                      value={newImageUrl} 
-                      onChange={(e) => setNewImageUrl(e.target.value)} 
-                    />
-                    <Button type="button" variant="outline" size="sm" onClick={addImage}>Add</Button>
-                  </div>
-
-                  {/* Previews */}
-                  <div className="flex gap-2 flex-wrap mt-2 p-2 rounded-lg border bg-card/50 min-h-[60px] items-center">
-                    {srvImages.map((url, idx) => (
-                      <div key={idx} className="w-14 h-14 border rounded-md overflow-hidden relative group bg-secondary flex-shrink-0 font-bold">
-                        <img src={url} alt={`preview-${idx}`} className="w-full h-full object-cover" />
-                        <button 
-                          type="button"
-                          className="absolute -top-1 -right-1 bg-destructive text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] shadow"
-                          onClick={() => removeImage(idx)}
-                        >
-                          x
-                        </button>
-                      </div>
-                    ))}
-                    {srvImages.length === 0 && (
-                      <span className="text-[10px] text-muted-foreground pl-2">Add image links to showcase this service visually.</span>
-                    )}
-                  </div>
-                  {/* Preset quick links */}
-                  <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
-                    <span>Quick presets:</span>
-                    <button 
-                      type="button" 
-                      className="underline hover:text-foreground"
-                      onClick={() => setSrvImages([...srvImages, "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400"])}
-                    >
-                      Service 1
-                    </button>
-                    <button 
-                      type="button" 
-                      className="underline hover:text-foreground"
-                      onClick={() => setSrvImages([...srvImages, "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400"])}
-                    >
-                      Service 2
-                    </button>
-                  </div>
-                </div>
+                <MediaPicker value={srvImages} onChange={setSrvImages} />
               </CardContent>
               <div className="p-6 pt-0 flex justify-end gap-3 border-t mt-4 pt-4">
                 <Button variant="outline" type="button" onClick={() => setShowServiceDialog(false)}>Cancel</Button>
