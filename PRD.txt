@@ -1,5 +1,7 @@
 # Nexora - Master Product Requirements & System Architecture Document
 
+Legacy planning reference. For current implementation requirements, installed versions and feature status, start with README.md, docs/PRD.md and docs/CURRENT_STATE.md. This historical document does not prove that a listed capability has shipped.
+
 ## Product Name
 
 Nexora

@@ -1,199 +1,246 @@
 "use client";
-
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowUpRight, Eye, MessageCircle, Package, Users, ExternalLink, BarChart } from "lucide-react";
-import { useAuth } from "@/lib/contexts/AuthContext";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  ArrowUpRight,
+  Package,
+  Briefcase,
+  MessageCircle,
+  Mail,
+  Palette,
+  Store,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
+import { useAuth } from "@/lib/contexts/AuthContext";
+import { ProductService } from "@/lib/api/product";
+import { ServiceModuleService } from "@/lib/api/service";
+import { CrmApiService } from "@/lib/api/crm";
 
+type Metrics = {
+  products: number;
+  services: number;
+  leads: number;
+  unread: number;
+};
 export default function DashboardPage() {
   const { user } = useAuth();
   const business = user?.businesses?.[0];
+  const businessId = business?.id;
+  const [result, setResult] = useState<{
+    businessId: string;
+    metrics: Metrics | null;
+    error: string;
+  } | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (!businessId) return;
+    let active = true;
+    Promise.all([
+      ProductService.getProducts(businessId, 1, 1),
+      ServiceModuleService.getServices(businessId, 1, 1),
+      CrmApiService.getLeadStats(businessId),
+    ])
+      .then(([products, services, leads]) => {
+        if (active)
+          setResult({
+            businessId,
+            metrics: {
+              products: products.total,
+              services: services.total,
+              leads: leads.total,
+              unread: leads.unread,
+            },
+            error: "",
+          });
+      })
+      .catch(() => {
+        if (active)
+          setResult({
+            businessId,
+            metrics: null,
+            error:
+              "We couldn’t load your overview. Your saved content has not changed.",
+          });
+      });
+    return () => {
+      active = false;
+    };
+  }, [businessId, attempt]);
+  const metrics =
+    result && result.businessId === businessId ? result.metrics : null;
+  const error = result && result.businessId === businessId ? result.error : "";
   const subscription = business?.subscription;
-
-  // Calculate days left in subscription trial or plan duration
-  let subscriptionText = "No active subscription";
-  let badgeText = "Inactive";
-  let badgeVariant: "outline" | "default" | "secondary" | "destructive" = "outline";
-
-  if (subscription) {
-    const now = new Date();
-    const trialEnd = subscription.trialEndDate ? new Date(subscription.trialEndDate) : null;
-    const periodEnd = subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd) : null;
-    
-    if (subscription.status === 'trialing' && trialEnd) {
-      const diffTime = Math.max(0, trialEnd.getTime() - now.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      subscriptionText = `${diffDays} days left`;
-      badgeText = "Trial";
-      badgeVariant = "outline";
-    } else if (subscription.status === 'active') {
-      badgeText = subscription.plan.toUpperCase();
-      badgeVariant = "default";
-      if (periodEnd) {
-        const diffTime = Math.max(0, periodEnd.getTime() - now.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        subscriptionText = `Renews in ${diffDays} days`;
-      } else {
-        subscriptionText = "Active plan";
-      }
-    } else {
-      badgeText = subscription.status.toUpperCase();
-      badgeVariant = "secondary";
-      subscriptionText = "Status: " + subscription.status;
-    }
-  }
-
+  const status = subscription?.status?.toUpperCase();
+  const subscriptionLabel =
+    status === "ACTIVE"
+      ? `${subscription?.plan} plan`
+      : status === "TRIAL"
+        ? "Trial workspace"
+        : status
+          ? status.replaceAll("_", " ")
+          : "No subscription";
+  const stats = [
+    {
+      label: "Products",
+      value: metrics?.products,
+      icon: Package,
+      href: "/dashboard/products",
+    },
+    {
+      label: "Services",
+      value: metrics?.services,
+      icon: Briefcase,
+      href: "/dashboard/services",
+    },
+    {
+      label: "Customer enquiries",
+      value: metrics?.leads,
+      icon: MessageCircle,
+      href: "/dashboard/subscribers",
+    },
+    {
+      label: "Unread enquiries",
+      value: metrics?.unread,
+      icon: Mail,
+      href: "/dashboard/subscribers",
+    },
+  ];
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="workspace-home">
+      <div className="workspace-page-heading">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user?.firstName || "User"} 👋</h1>
-          <p className="text-muted-foreground mt-1">Here's what's happening with your business today.</p>
+          <span className="workspace-eyebrow">YOUR BUSINESS, AT A GLANCE</span>
+          <h1>
+            Hello, {user?.firstName || "there"}
+            <span>.</span>
+          </h1>
+          <p>A little progress today. A bigger business tomorrow.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" asChild={!!business?.slug}>
-            {business?.slug ? (
-              <a href={`/sites/${business.slug}`} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                View Website
-              </a>
-            ) : (
-              <button disabled className="opacity-50">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                No Website Yet
-              </button>
-            )}
-          </Button>
-          <Button variant="gradient">
-            Add Product
-          </Button>
+        <Link href="/dashboard/products" className="workspace-button">
+          <Plus size={17} /> Manage products
+        </Link>
+      </div>
+      <section className="workspace-welcome">
+        <div>
+          <span className="workspace-tag">{subscriptionLabel}</span>
+          <h2>
+            Make yourself
+            <br />
+            <em>right at home.</em>
+          </h2>
+          <p>
+            Bring your story, catalogue and brand together.
+            <br />
+            Let’s make this space feel like your business.
+          </p>
+          <Link href="/dashboard/settings">
+            Complete your business profile <ArrowUpRight size={17} />
+          </Link>
         </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-          title="Total Views" 
-          value="12,456" 
-          trend="+12.5%" 
-          trendUp={true} 
-          icon={<Eye className="w-5 h-5 text-primary" />} 
-        />
-        <StatCard 
-          title="WhatsApp Clicks" 
-          value="1,245" 
-          trend="+8.2%" 
-          trendUp={true} 
-          icon={<MessageCircle className="w-5 h-5 text-emerald-500" />} 
-        />
-        <StatCard 
-          title="Total Products" 
-          value="56" 
-          trend="+2" 
-          trendUp={true} 
-          icon={<Package className="w-5 h-5 text-orange-500" />} 
-        />
-        <StatCard 
-          title="Active Subscribers" 
-          value="320" 
-          trend="-1.2%" 
-          trendUp={false} 
-          icon={<Users className="w-5 h-5 text-blue-500" />} 
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Chart Area */}
-        <Card className="lg:col-span-2 glass">
-          <CardHeader>
-            <CardTitle>Overview</CardTitle>
-            <CardDescription>Website traffic over the last 30 days</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px] w-full rounded-lg border border-border/50 bg-background/50 flex items-center justify-center flex-col gap-2">
-              <BarChart className="w-10 h-10 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">Chart integration pending</p>
+        <div className="workspace-welcome-art" aria-hidden="true">
+          <Store size={75} strokeWidth={1} />
+          <span>{business?.name || "Your big idea"}</span>
+          <small>MADE FOR YOUR NEXT CHAPTER</small>
+        </div>
+      </section>
+      {!businessId && (
+        <p className="workspace-notice">
+          No business is connected to this account yet. Business onboarding must
+          be completed before catalogue management is available.
+        </p>
+      )}
+      {error && (
+        <div className="workspace-notice" role="alert">
+          {error}
+          <button onClick={() => setAttempt((a) => a + 1)}>
+            <RefreshCw size={14} /> Retry
+          </button>
+        </div>
+      )}
+      <div className="workspace-stats">
+        {stats.map(({ label, value, icon: Icon, href }) => (
+          <Link href={href} className="workspace-stat" key={label}>
+            <div>
+              <span>{label}</span>
+              <Icon size={19} />
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Side Panel */}
-        <div className="space-y-8">
-          {/* Subscription Status */}
-          <Card className="glass overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[50px] rounded-full -z-10"></div>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Subscription</CardTitle>
-                <Badge variant={badgeVariant} className={badgeVariant === "outline" ? "border-primary text-primary" : ""}>
-                  {badgeText}
-                </Badge>
+            <strong>
+              {value === undefined ? "—" : value.toLocaleString()}
+            </strong>
+            <small>
+              {error
+                ? "Temporarily unavailable"
+                : !businessId
+                  ? "No business connected"
+                  : metrics
+                    ? "From your business records"
+                    : "Loading your records…"}
+            </small>
+          </Link>
+        ))}
+      </div>
+      <div className="workspace-bottom-grid">
+        <section className="workspace-panel-card">
+          <div className="workspace-card-heading">
+            <h2>Your next steps</h2>
+            <span>MAKE IT YOURS</span>
+          </div>
+          {[
+            {
+              icon: Store,
+              title: "Tell your story",
+              text: "Add your business name, description and contact details.",
+              href: "/dashboard/settings",
+            },
+            {
+              icon: Package,
+              title: "Show what you offer",
+              text: "Build a catalogue of products and services.",
+              href: "/dashboard/products",
+            },
+            {
+              icon: Palette,
+              title: "Find your look",
+              text: "Explore your colours, typography and theme.",
+              href: "/dashboard/appearance",
+            },
+          ].map(({ icon: Icon, title, text, href }, i) => (
+            <Link href={href} className="workspace-step" key={title}>
+              <span className="workspace-step-icon">
+                <Icon size={20} />
+              </span>
+              <div>
+                <small>STEP 0{i + 1}</small>
+                <h3>{title}</h3>
+                <p>{text}</p>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold mb-1">{subscriptionText}</div>
-              <p className="text-sm text-muted-foreground mb-4">
-                {subscription?.status === 'active' 
-                  ? "Thank you for supporting Nexora! Enjoy all premium features." 
-                  : "Upgrade to unlock custom domains and premium themes."}
-              </p>
-              {subscription?.status !== 'active' && (
-                <Button className="w-full" variant="default" asChild>
-                  <Link href="/dashboard/billing">Upgrade Now</Link>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Top Products */}
-          <Card className="glass">
-            <CardHeader>
-              <CardTitle className="text-lg">Top Products</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-secondary flex-shrink-0"></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">Signature Collection {i}</p>
-                    <p className="text-xs text-muted-foreground">132 views</p>
-                  </div>
-                  <div className="text-sm font-medium">₦15,000</div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
+              <ArrowUpRight size={18} />
+            </Link>
+          ))}
+        </section>
+        <section className="workspace-panel-card workspace-release">
+          <span className="workspace-eyebrow">WHAT’S NEXT</span>
+          <h2>
+            A clearer view
+            <br />
+            of your growth.
+          </h2>
+          <p>
+            Traffic analytics and public website delivery are still being
+            completed. We’ll show real results here when tracking is connected.
+          </p>
+          <div className="workspace-empty-chart" aria-hidden="true">
+            {[35, 55, 45, 72, 60, 88, 75, 100].map((v, i) => (
+              <i key={i} style={{ height: v }} />
+            ))}
+          </div>
+          <small>Illustration only · no traffic data collected here</small>
+          <Link href="/dashboard/website">
+            Review your website setup <ArrowUpRight size={15} />
+          </Link>
+        </section>
       </div>
     </div>
   );
 }
-
-function StatCard({ title, value, trend, trendUp, icon }: { title: string, value: string, trend: string, trendUp: boolean, icon: React.ReactNode }) {
-  return (
-    <Card className="glass hover:border-primary/30 transition-colors">
-      <CardContent className="p-6">
-        <div className="flex justify-between items-start">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold tracking-tight">{value}</p>
-          </div>
-          <div className="p-2 bg-background rounded-lg border border-border/50">
-            {icon}
-          </div>
-        </div>
-        <div className="mt-4 flex items-center text-sm">
-          <span className={`flex items-center font-medium ${trendUp ? 'text-emerald-500' : 'text-destructive'}`}>
-            {trendUp ? <ArrowUpRight className="w-4 h-4 mr-1" /> : <ArrowUpRight className="w-4 h-4 mr-1 rotate-90" />}
-            {trend}
-          </span>
-          <span className="text-muted-foreground ml-2">vs last month</span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
