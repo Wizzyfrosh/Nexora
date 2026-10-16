@@ -16,10 +16,19 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Runtime gate rejects every known severity; full-tree gate also rejects critical tooling findings.
+      # Known unpatched noncritical tooling findings remain visible; see docs/DEPENDENCIES.md.
+      - run: npm run audit:production
+      - run: npm run audit:critical
       - run: npm run build --workspace @nexora/shared-types
       - run: npm exec --workspace api -- prisma generate --schema prisma/schema.prisma
       - run: npm run build
       - run: npm run test --workspace api -- --runInBand
+      # Generate/build first, then prove runtime imports survive a production-only prune.
+      - run: npm prune --omit=dev --ignore-scripts --no-audit
+      - name: Production API import smoke test (no server or database connection)
+        working-directory: apps/api
+        run: node -e "const assert = require('node:assert/strict'); assert.equal(require('./package.json').scripts['start:prod'], 'node dist/src/main.js'); assert.ok(require('node:fs').existsSync('dist/src/main.js')); assert.equal(typeof require('@prisma/client').PrismaClient, 'function'); require('./dist/src/app.module.js'); console.log('Production API imports passed')"
   tenant-security-postgres:
     runs-on: ubuntu-latest
     timeout-minutes: 15

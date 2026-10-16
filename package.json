@@ -13,7 +13,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "turbo run build",
     "dev": "turbo run dev --ui=stream",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "audit:production": "npm audit --omit=dev --audit-level=low",
+    "audit:critical": "npm audit --audit-level=critical",
+    "audit:full": "npm audit"
   },
   "keywords": [],
   "author": "",
