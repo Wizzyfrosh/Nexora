@@ -1,8 +1,25 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
+import {
+  CreateServiceRequest,
+  UpdateServiceRequest,
+} from '../../common/dto/content.dto';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  ParseIntPipe,
+  DefaultValuePipe,
+} from '@nestjs/common';
 import { ServiceService } from './service.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { ResponseMessage } from '../../common/interceptors/transform.interceptor';
+import { PublicBusinessGuard } from '../../common/guards/public-business.guard';
 import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('businesses/:businessId/services')
@@ -12,6 +29,7 @@ export class ServiceController {
   // ---- Public Routes (For the storefronts) ----
 
   @Public()
+  @UseGuards(PublicBusinessGuard)
   @Get('public/slug/:slug')
   @ResponseMessage('Public service retrieved')
   async getPublicServiceBySlug(
@@ -22,6 +40,7 @@ export class ServiceController {
   }
 
   @Public()
+  @UseGuards(PublicBusinessGuard)
   @Get('public/list')
   @ResponseMessage('Public services list retrieved')
   async getPublicServicesList(
@@ -29,7 +48,7 @@ export class ServiceController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    return this.serviceService.getServices(businessId, page, limit);
+    return this.serviceService.getPublicServices(businessId, page, limit);
   }
 
   // ---- Tenant Scoped Management Routes ----
@@ -60,7 +79,7 @@ export class ServiceController {
   @ResponseMessage('Service created successfully')
   async createService(
     @Param('businessId') businessId: string,
-    @Body() dto: any, // CreateServiceDto - validation pipes applied globally
+    @Body() dto: CreateServiceRequest,
   ) {
     return this.serviceService.createService(businessId, dto);
   }
@@ -71,7 +90,7 @@ export class ServiceController {
   async updateService(
     @Param('businessId') businessId: string,
     @Param('serviceId') serviceId: string,
-    @Body() dto: any, // UpdateServiceDto
+    @Body() dto: UpdateServiceRequest,
   ) {
     return this.serviceService.updateService(businessId, serviceId, dto);
   }

@@ -59,28 +59,55 @@ describe('CrmService', () => {
       const result = await service.captureLead('business-id-123', dto);
 
       expect(crmRepo.createLead).toHaveBeenCalledWith('business-id-123', dto);
-      expect(result).toEqual(mockLead);
+      expect(result).toEqual({ id: mockLead.id });
     });
   });
 
   describe('getLeads', () => {
     it('should retrieve paginated leads', async () => {
-      const mockResult = { data: [mockLead], total: 1, page: 1, limit: 20, totalPages: 1 };
+      const mockResult = {
+        data: [mockLead],
+        total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      };
       crmRepo.getLeads.mockResolvedValue(mockResult);
 
       const result = await service.getLeads('business-id-123', 1, 20);
 
-      expect(crmRepo.getLeads).toHaveBeenCalledWith('business-id-123', 1, 20, undefined);
+      expect(crmRepo.getLeads).toHaveBeenCalledWith(
+        'business-id-123',
+        1,
+        20,
+        undefined,
+      );
       expect(result).toEqual(mockResult);
     });
 
     it('should pass search filter to repository', async () => {
-      const mockResult = { data: [mockLead], total: 1, page: 1, limit: 20, totalPages: 1 };
+      const mockResult = {
+        data: [mockLead],
+        total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      };
       crmRepo.getLeads.mockResolvedValue(mockResult);
 
-      const result = await service.getLeads('business-id-123', 1, 20, 'emmanuel');
+      const result = await service.getLeads(
+        'business-id-123',
+        1,
+        20,
+        'emmanuel',
+      );
 
-      expect(crmRepo.getLeads).toHaveBeenCalledWith('business-id-123', 1, 20, 'emmanuel');
+      expect(crmRepo.getLeads).toHaveBeenCalledWith(
+        'business-id-123',
+        1,
+        20,
+        'emmanuel',
+      );
       expect(result).toEqual(mockResult);
     });
   });
@@ -113,9 +140,15 @@ describe('CrmService', () => {
       const readLead = { ...mockLead, isRead: true };
       crmRepo.markAsRead.mockResolvedValue(readLead);
 
-      const result = await service.markLeadAsRead('business-id-123', 'lead-id-123');
+      const result = await service.markLeadAsRead(
+        'business-id-123',
+        'lead-id-123',
+      );
 
-      expect(crmRepo.markAsRead).toHaveBeenCalledWith('lead-id-123');
+      expect(crmRepo.markAsRead).toHaveBeenCalledWith(
+        'lead-id-123',
+        'business-id-123',
+      );
       expect(result.isRead).toBe(true);
     });
   });
@@ -126,16 +159,32 @@ describe('CrmService', () => {
 
       await service.deleteLead('business-id-123', 'lead-id-123');
 
-      expect(crmRepo.deleteLead).toHaveBeenCalledWith('lead-id-123');
+      expect(crmRepo.deleteLead).toHaveBeenCalledWith(
+        'lead-id-123',
+        'business-id-123',
+      );
     });
   });
 
   describe('logWhatsAppClick', () => {
     it('should track a WhatsApp click event', async () => {
-      const mockEvent = { id: 'event-id', eventType: 'WHATSAPP_CLICK' };
+      const mockEvent = {
+        id: 'event-id',
+        eventType: 'WHATSAPP_CLICK' as const,
+        businessId: 'business-id-123',
+        metadata: {},
+        resourceId: null,
+        sessionId: 'session-abc',
+        createdAt: new Date(),
+        timestamp: new Date(),
+      };
       crmRepo.trackAnalyticsEvent.mockResolvedValue(mockEvent);
 
-      const result = await service.logWhatsAppClick('business-id-123', 'session-abc', 'homepage');
+      const result = await service.logWhatsAppClick(
+        'business-id-123',
+        'session-abc',
+        'homepage',
+      );
 
       expect(crmRepo.trackAnalyticsEvent).toHaveBeenCalledWith(
         'business-id-123',
@@ -143,7 +192,7 @@ describe('CrmService', () => {
         { source: 'homepage' },
         'session-abc',
       );
-      expect(result).toEqual(mockEvent);
+      expect(result).toEqual({ recorded: true });
     });
   });
 });

@@ -19,10 +19,15 @@ export class CrmRepository {
     });
   }
 
-  async getLeads(businessId: string, page: number = 1, limit: number = 20, search?: string) {
+  async getLeads(
+    businessId: string,
+    page: number = 1,
+    limit: number = 20,
+    search?: string,
+  ) {
     const skip = (page - 1) * limit;
 
-    const where: any = { businessId };
+    const where: any = { businessId, deletedAt: null };
 
     // Add search filter across name, email, and phone
     if (search && search.trim()) {
@@ -48,20 +53,20 @@ export class CrmRepository {
 
   async getUnreadCount(businessId: string) {
     return this.prisma.lead.count({
-      where: { businessId, isRead: false },
+      where: { businessId, isRead: false, deletedAt: null },
     });
   }
 
-  async markAsRead(id: string) {
+  async markAsRead(id: string, businessId: string) {
     return this.prisma.lead.update({
-      where: { id },
+      where: { id, businessId, deletedAt: null },
       data: { isRead: true },
     });
   }
 
-  async deleteLead(id: string) {
+  async deleteLead(id: string, businessId: string) {
     return this.prisma.lead.delete({
-      where: { id },
+      where: { id, businessId, deletedAt: null },
     });
   }
 
@@ -70,11 +75,14 @@ export class CrmRepository {
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     const [total, unread, thisWeek] = await Promise.all([
-      this.prisma.lead.count({ where: { businessId } }),
-      this.prisma.lead.count({ where: { businessId, isRead: false } }),
+      this.prisma.lead.count({ where: { businessId, deletedAt: null } }),
+      this.prisma.lead.count({
+        where: { businessId, isRead: false, deletedAt: null },
+      }),
       this.prisma.lead.count({
         where: {
           businessId,
+          deletedAt: null,
           createdAt: { gte: weekAgo },
         },
       }),
@@ -83,7 +91,12 @@ export class CrmRepository {
     return { total, unread, thisWeek };
   }
 
-  async trackAnalyticsEvent(businessId: string, eventType: any, metadata: any, sessionId: string) {
+  async trackAnalyticsEvent(
+    businessId: string,
+    eventType: any,
+    metadata: any,
+    sessionId: string,
+  ) {
     return this.prisma.analyticsEvent.create({
       data: {
         businessId,

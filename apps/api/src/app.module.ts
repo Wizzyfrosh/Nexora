@@ -21,6 +21,8 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { OriginGuard } from './common/guards/origin.guard';
+import { validateEnvironment } from './config/validate-environment';
 
 @Module({
   controllers: [AppController],
@@ -29,6 +31,7 @@ import { AppService } from './app.service';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
+      validate: validateEnvironment,
       envFilePath: ['.env.local', '.env'],
     }),
 
@@ -36,18 +39,18 @@ import { AppService } from './app.service';
     ThrottlerModule.forRoot([
       {
         name: 'short',
-        ttl: 1000,     // 1 second
-        limit: 3,      // 3 requests per second
+        ttl: 1000, // 1 second
+        limit: 3, // 3 requests per second
       },
       {
         name: 'medium',
-        ttl: 10000,    // 10 seconds
-        limit: 20,     // 20 requests per 10 seconds
+        ttl: 10000, // 10 seconds
+        limit: 20, // 20 requests per 10 seconds
       },
       {
         name: 'long',
-        ttl: 60000,    // 1 minute
-        limit: 100,    // 100 requests per minute
+        ttl: 60000, // 1 minute
+        limit: 100, // 100 requests per minute
       },
     ]),
 
@@ -65,6 +68,7 @@ import { AppService } from './app.service';
   ],
   providers: [
     AppService,
+    { provide: APP_GUARD, useClass: OriginGuard },
     // Global exception filter
     {
       provide: APP_FILTER,

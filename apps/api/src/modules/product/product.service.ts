@@ -1,6 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { publicProduct } from '../../common/security/public-projections';
+import { assertPagination } from '../../common/security/pagination';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { ProductRepository } from './product.repository';
-import { CreateProductDto, UpdateProductDto, CreateCategoryDto } from '@nexora/shared-types';
+import {
+  CreateProductDto,
+  UpdateProductDto,
+  CreateCategoryDto,
+} from '@nexora/shared-types';
 
 @Injectable()
 export class ProductService {
@@ -14,8 +24,11 @@ export class ProductService {
 
   async createCategory(businessId: string, dto: CreateCategoryDto) {
     const slug = this.formatSlug(dto.name);
-    const existing = await this.productRepo.findCategoryBySlug(businessId, slug);
-    
+    const existing = await this.productRepo.findCategoryBySlug(
+      businessId,
+      slug,
+    );
+
     if (existing) {
       throw new BadRequestException('Category with this name already exists');
     }
@@ -26,15 +39,31 @@ export class ProductService {
   // ---- Products ----
 
   async getProducts(businessId: string, page: number = 1, limit: number = 20) {
-    return this.productRepo.getProducts(businessId, page, limit);
+    assertPagination(page, limit);
+    const result = await this.productRepo.getProducts(businessId, page, limit);
+    return {
+      ...result,
+      data: result.data.map((item) =>
+        item.category &&
+        (item.category.businessId !== businessId || item.category.deletedAt)
+          ? { ...item, category: null }
+          : item,
+      ),
+    };
   }
 
   async getProduct(businessId: string, productId: string) {
-    const product = await this.productRepo.findProductById(productId, businessId);
+    const product = await this.productRepo.findProductById(
+      productId,
+      businessId,
+    );
     if (!product) {
       throw new NotFoundException('Product not found');
     }
-    return product;
+    return product.category &&
+      (product.category.businessId !== businessId || product.category.deletedAt)
+      ? { ...product, category: null }
+      : product;
   }
 
   async getPublicProductBySlug(businessId: string, slug: string) {
@@ -42,7 +71,12 @@ export class ProductService {
     if (!product) {
       throw new NotFoundException('Product not found');
     }
-    return product;
+    return publicProduct(product);
+  }
+
+  async getPublicProducts(businessId: string, page = 1, limit = 20) {
+    const result = await this.getProducts(businessId, page, limit);
+    return { ...result, data: result.data.map(publicProduct) };
   }
 
   async createProduct(businessId: string, dto: CreateProductDto) {
@@ -52,16 +86,20 @@ export class ProductService {
     return this.productRepo.createProduct(businessId, dto, slug);
   }
 
-  async updateProduct(businessId: string, productId: string, dto: UpdateProductDto) {
+  async updateProduct(
+    businessId: string,
+    productId: string,
+    dto: UpdateProductDto,
+  ) {
     const existing = await this.getProduct(businessId, productId);
-    
+
     // We only update if the business actually owns it (already verified in getProduct)
-    return this.productRepo.updateProduct(existing.id, dto);
+    return this.productRepo.updateProduct(existing.id, businessId, dto);
   }
 
   async deleteProduct(businessId: string, productId: string) {
     const existing = await this.getProduct(businessId, productId);
-    return this.productRepo.deleteProduct(existing.id);
+    return this.productRepo.deleteProduct(existing.id, businessId);
   }
 
   // ---- Helpers ----
@@ -75,7 +113,10 @@ export class ProductService {
       .replace(/^-|-$/g, '');
   }
 
-  private async ensureUniqueProductSlug(businessId: string, baseSlug: string): Promise<string> {
+  private async ensureUniqueProductSlug(
+    businessId: string,
+    baseSlug: string,
+  ): Promise<string> {
     let slug = baseSlug;
     let counter = 1;
     let exists = await this.productRepo.findProductBySlug(businessId, slug);

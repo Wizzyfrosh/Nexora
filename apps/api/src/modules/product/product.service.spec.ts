@@ -70,7 +70,10 @@ describe('ProductService', () => {
         name: 'Bags',
       });
 
-      expect(productRepo.findCategoryBySlug).toHaveBeenCalledWith('business-id-123', 'bags');
+      expect(productRepo.findCategoryBySlug).toHaveBeenCalledWith(
+        'business-id-123',
+        'bags',
+      );
       expect(productRepo.createCategory).toHaveBeenCalledWith(
         'business-id-123',
         { name: 'Bags' },
@@ -90,21 +93,37 @@ describe('ProductService', () => {
 
   describe('products', () => {
     it('should retrieve paginated list of products', async () => {
-      const mockResult = { data: [mockProduct], total: 1, page: 1, limit: 10, totalPages: 1 };
+      const mockResult = {
+        data: [mockProduct],
+        total: 1,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      };
       productRepo.getProducts.mockResolvedValue(mockResult);
 
       const result = await service.getProducts('business-id-123', 1, 10);
 
-      expect(productRepo.getProducts).toHaveBeenCalledWith('business-id-123', 1, 10);
+      expect(productRepo.getProducts).toHaveBeenCalledWith(
+        'business-id-123',
+        1,
+        10,
+      );
       expect(result).toEqual(mockResult);
     });
 
     it('should retrieve single product by ID', async () => {
       productRepo.findProductById.mockResolvedValue(mockProduct);
 
-      const result = await service.getProduct('business-id-123', 'product-id-123');
+      const result = await service.getProduct(
+        'business-id-123',
+        'product-id-123',
+      );
 
-      expect(productRepo.findProductById).toHaveBeenCalledWith('product-id-123', 'business-id-123');
+      expect(productRepo.findProductById).toHaveBeenCalledWith(
+        'product-id-123',
+        'business-id-123',
+      );
       expect(result).toEqual(mockProduct);
     });
 
@@ -147,21 +166,43 @@ describe('ProductService', () => {
         price: 15000,
       });
 
-      expect(productRepo.findProductBySlug).toHaveBeenNthCalledWith(1, 'business-id-123', 'leather-bag');
-      expect(productRepo.findProductBySlug).toHaveBeenNthCalledWith(2, 'business-id-123', 'leather-bag-1');
+      expect(productRepo.findProductBySlug).toHaveBeenNthCalledWith(
+        1,
+        'business-id-123',
+        'leather-bag',
+      );
+      expect(productRepo.findProductBySlug).toHaveBeenNthCalledWith(
+        2,
+        'business-id-123',
+        'leather-bag-1',
+      );
       expect(result.slug).toBe('leather-bag-1');
     });
 
     it('should update product if exists', async () => {
       productRepo.findProductById.mockResolvedValue(mockProduct);
-      productRepo.updateProduct.mockResolvedValue({ ...mockProduct, price: 18000 });
-
-      const result = await service.updateProduct('business-id-123', 'product-id-123', {
+      productRepo.updateProduct.mockResolvedValue({
+        ...mockProduct,
         price: 18000,
       });
 
-      expect(productRepo.findProductById).toHaveBeenCalledWith('product-id-123', 'business-id-123');
-      expect(productRepo.updateProduct).toHaveBeenCalledWith('product-id-123', { price: 18000 });
+      const result = await service.updateProduct(
+        'business-id-123',
+        'product-id-123',
+        {
+          price: 18000,
+        },
+      );
+
+      expect(productRepo.findProductById).toHaveBeenCalledWith(
+        'product-id-123',
+        'business-id-123',
+      );
+      expect(productRepo.updateProduct).toHaveBeenCalledWith(
+        'product-id-123',
+        'business-id-123',
+        { price: 18000 },
+      );
       expect(result.price).toBe(18000);
     });
 
@@ -171,8 +212,14 @@ describe('ProductService', () => {
 
       await service.deleteProduct('business-id-123', 'product-id-123');
 
-      expect(productRepo.findProductById).toHaveBeenCalledWith('product-id-123', 'business-id-123');
-      expect(productRepo.deleteProduct).toHaveBeenCalledWith('product-id-123');
+      expect(productRepo.findProductById).toHaveBeenCalledWith(
+        'product-id-123',
+        'business-id-123',
+      );
+      expect(productRepo.deleteProduct).toHaveBeenCalledWith(
+        'product-id-123',
+        'business-id-123',
+      );
     });
   });
 });

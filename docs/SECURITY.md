@@ -15,14 +15,16 @@ Scope: shared-business SaaS with account credentials, visitor PII, subscription 
 | Abuse/spam                       | Per-user/tenant/IP limits and honeypot/bot escalation                                                 | Burst lead submissions bounded; normal visitors retain access                                      |
 | Secret leakage                   | Fail-closed config, redacted logs, least privilege                                                    | Known defaults cannot start production; no secrets in client bundles                               |
 
-## Observed P0s to fix before launch
+## Audit findings and remediation status
 
-1. WebsiteRepository updates an existing section using where:{id:sectionId}; websiteId is not part of that write. Service removes sections before validating all incoming IDs. Validate membership first and replace all writes in one transaction.
-2. Public BusinessService gates only selected status strings; require a nondeleted subscription, allowed status and unexpired server timestamps. Gate every public endpoint consistently.
+1. **Addressed in tenant-safety follow-up:** repository now locks the parent and validates all IDs before a transactional replacement. Original finding: WebsiteRepository updates an existing section using where:{id:sectionId}; websiteId is not part of that write. Service removes sections before validating all incoming IDs. Validate membership first and replace all writes in one transaction.
+2. **Addressed in tenant-safety follow-up:** shared policy checks deletion, publication, subscription existence/status and current expiry for all public boundaries. Original finding: Public BusinessService gates only selected status strings; require a nondeleted subscription, allowed status and unexpired server timestamps. Gate every public endpoint consistently.
 3. Payment signing uses JSON serialization, not exact body bytes; compare decoded signatures with timingSafeEqual after validating length/format and require a configured secret.
 4. Successful payments update subscription then payment without a shared transaction or fulfilment guard. Verify persisted reference, expected amount in kobo, NGN currency, intended tenant/plan/customer and provider status before an atomic fulfilment.
-5. Default JWT secrets are known strings; production startup must reject missing/default/weak values.
-   These findings are not fixed by the visual upgrade.
+5. **Addressed in tenant-safety follow-up:** production configuration rejects missing/default/placeholder or identical JWT secrets and invalid database/frontend origins.
+
+Payment findings 3/4 remain launch blockers. Media ownership, complete session-token hardening and deployed cookie topology remain open. Cookie writes now require the configured Origin; nonbrowser server requests without session cookies remain allowed. Public replies use explicit profile/catalogue projections; enquiry capture returns only a receipt ID. Unexpected database errors no longer expose their message to callers.
+Database negative/rollback/concurrency checks run in an isolated PostgreSQL CI job; see VERIFICATION.md for actual execution status.
 
 ## Auth hardening
 
@@ -42,7 +44,7 @@ If server-side remote fetch is introduced: allowlist providers or block loopback
 ## Release gate
 
 Tenant-negative integration tests, webhook replay/concurrency tests, expiry/unpublish tests, secret scanning, dependency review, staging cookie test and backup restore exercise must pass.
-Do not conflate the 43 existing unit tests with proof that these vulnerabilities are covered.
+Do not conflate passing unit tests with proof that these vulnerabilities are covered.
 
 ## References
 

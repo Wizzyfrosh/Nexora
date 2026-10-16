@@ -1,7 +1,7 @@
 # API inventory and contract rules
 
 Base: /api/v1. Current API envelope: { success, message, data }; apiFetch unwraps data.
-This inventory identifies code, not verified production endpoints. P0 public and payment flaws are documented in SECURITY.md.
+This inventory identifies code, not verified production endpoints. Public tenant/expiry gates have been hardened and regression-tested; remaining payment flaws are documented in SECURITY.md.
 
 ## Existing route families
 
@@ -14,18 +14,18 @@ This inventory identifies code, not verified production endpoints. P0 public and
 | GET                | /businesses/my-businesses                                            | Owner list                                                    |
 | POST               | /businesses                                                          | Authenticated create                                          |
 | GET / PUT          | /businesses/:businessId                                              | Private tenant-scoped profile                                 |
-| GET                | /businesses/slug/:slug                                               | Public profile; entitlement hardening needed                  |
+| GET                | /businesses/slug/:slug                                               | Public profile; shared entitlement policy                  |
 | GET / POST         | /businesses/:businessId/products                                     | Private paginated list / create                               |
 | GET / PUT / DELETE | /businesses/:businessId/products/:productId                          | Private single-item CRUD                                      |
 | GET / POST         | /businesses/:businessId/products/categories/all, /categories         | Actual category routes differ by method/path                  |
-| GET                | /businesses/:businessId/products/public/list, /public/slug/:slug     | Public catalogue; central entitlement gate required           |
+| GET                | /businesses/:businessId/products/public/list, /public/slug/:slug     | Public catalogue; shared entitlement policy           |
 | GET / POST         | /businesses/:businessId/services                                     | Private list / create                                         |
 | GET / PUT / DELETE | /businesses/:businessId/services/:serviceId                          | Private single-item CRUD                                      |
 | GET                | /businesses/:businessId/services/public/list, /public/slug/:slug     | Public services                                               |
 | GET                | /websites/themes                                                     | Preset inventory                                              |
 | GET                | /websites/:businessId                                                | Private config                                                |
-| PUT                | /websites/:businessId/theme, /sections, /domain                      | Tenant config writes; nested authorization must be fixed      |
-| GET                | /websites/public/:businessId                                         | Public config path; review policy/projection before use       |
+| PUT                | /websites/:businessId/theme, /sections, /domain                      | Tenant config writes; sections saved atomically under parent scope      |
+| GET                | /websites/public/:businessId                                         | Public config with shared policy and limited projection       |
 | POST               | /businesses/:businessId/crm/leads                                    | Public form submission                                        |
 | POST               | /businesses/:businessId/crm/track/whatsapp                           | Public click record                                           |
 | GET                | /businesses/:businessId/crm/leads, /leads/stats, /leads/unread-count | Private owner reads                                           |
@@ -36,14 +36,14 @@ This inventory identifies code, not verified production endpoints. P0 public and
 
 ## New/changed API requirements
 
-Define explicit DTOs for theme, typography, sections and domains. Current inline types/any do not provide runtime constraints.
+Define explicit DTOs for theme, typography, sections and domains. Runtime content DTOs now validate catalogue, lead and website input; section/theme service validators provide additional bounds. Provider upload ownership remains a separate feature.
 Reject unknown properties, duplicate section IDs, unsupported section types, negative/NaN/oversized prices, unsafe URL protocols and cross-tenant foreign keys.
 Public serializers return only business contact/catalogue data intended for display; never owner identity/password/token fields, private leads or provider/payment data.
 
 ## Pagination
 
 Existing catalogue clients expect { data: [...], total, page, limit, totalPages } inside the API envelope.
-Keep page >=1, limit between 1 and 100, server-side bounds and stable ordering. Validate query values rather than relying on implicit conversion.
+Current catalogue/CRM service bounds enforce page >=1 (maximum 1000000), limit between 1 and 100, and stable ordering. Validate query values rather than relying on implicit conversion.
 Return 400 validation errors, 401 authentication failure, 403 authorization failure (or consistent 404 resource concealment), 409 conflict, 429 throttling, 503 provider/dependency unavailability.
 
 ## Illustrative contract
@@ -57,6 +57,10 @@ GET /businesses/{authorizedId}/crm/leads/stats:
   "data": { "total": 0, "unread": 0, "thisWeek": 0 }
 }
 ```
+
+Public lead capture now returns only { id }, and click tracking returns { recorded: true }; private visitor details are not echoed publicly.
+
+Cookie-authenticated mutations must include the exact configured Origin. A browser's origin must be on the fixed web origin until verified custom-domain support is implemented.
 
 Zero means a successful count of zero; unavailable must remain an error. Never convert failed count requests to invented zero statistics.
 

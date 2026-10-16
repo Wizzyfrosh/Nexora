@@ -12,6 +12,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { Prisma } from '@prisma/client';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -32,7 +33,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
-      } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+      } else if (
+        typeof exceptionResponse === 'object' &&
+        exceptionResponse !== null
+      ) {
         const responseObj = exceptionResponse as Record<string, unknown>;
         message = (responseObj.message as string) || message;
 
@@ -42,14 +46,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
           errors = { validationErrors: responseObj.message };
         }
       }
-    } else if (exception instanceof Error) {
-      message = exception.message;
+    } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      if (exception.code === 'P2025') {
+        status = HttpStatus.NOT_FOUND;
+        message = 'Resource not found';
+      } else if (exception.code === 'P2002') {
+        status = HttpStatus.CONFLICT;
+        message = 'Resource already exists';
+      }
     }
 
-    // Log the error with full context
+    // Production logs must not include Prisma query arguments or token payloads.
     this.logger.error(
       `${request.method} ${request.url} - ${status} - ${message}`,
-      exception instanceof Error ? exception.stack : undefined,
+      process.env.NODE_ENV !== 'production' && exception instanceof Error
+        ? exception.stack
+        : undefined,
     );
 
     response.status(status).json({

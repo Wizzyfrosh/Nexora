@@ -1,3 +1,4 @@
+import { assertCategoryOwnership } from '../../common/security/category';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -9,7 +10,7 @@ export class ServiceRepository {
 
   async findServiceById(id: string, businessId: string) {
     return this.prisma.service.findFirst({
-      where: { id, businessId },
+      where: { id, businessId, deletedAt: null },
       include: {
         category: true,
       },
@@ -17,8 +18,8 @@ export class ServiceRepository {
   }
 
   async findServiceBySlug(businessId: string, slug: string) {
-    return this.prisma.service.findUnique({
-      where: { businessId_slug: { businessId, slug } },
+    return this.prisma.service.findFirst({
+      where: { businessId, slug, deletedAt: null },
       include: {
         category: true,
       },
@@ -30,7 +31,7 @@ export class ServiceRepository {
 
     const [data, total] = await Promise.all([
       this.prisma.service.findMany({
-        where: { businessId },
+        where: { businessId, deletedAt: null },
         include: {
           category: true,
         },
@@ -38,51 +39,69 @@ export class ServiceRepository {
         skip,
         take: limit,
       }),
-      this.prisma.service.count({ where: { businessId } }),
+      this.prisma.service.count({ where: { businessId, deletedAt: null } }),
     ]);
 
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async createService(businessId: string, data: CreateServiceDto, slug: string) {
-    return this.prisma.service.create({
-      data: {
-        businessId,
-        name: data.name,
-        slug,
-        description: data.description,
-        price: data.price ? new Prisma.Decimal(data.price) : null,
-        priceLabel: data.priceLabel,
-        isFeatured: data.isFeatured ?? false,
-        categoryId: data.categoryId,
-        images: data.images ?? [],
-      },
-      include: {
-        category: true,
-      },
+  async createService(
+    businessId: string,
+    data: CreateServiceDto,
+    slug: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      await assertCategoryOwnership(tx, businessId, data.categoryId);
+      return tx.service.create({
+        data: {
+          businessId,
+          name: data.name,
+          slug,
+          description: data.description,
+          price:
+            data.price !== undefined && data.price !== null
+              ? new Prisma.Decimal(data.price)
+              : null,
+          priceLabel: data.priceLabel,
+          isFeatured: data.isFeatured ?? false,
+          categoryId: data.categoryId,
+          images: data.images ?? [],
+        },
+        include: {
+          category: true,
+        },
+      });
     });
   }
 
-  async updateService(id: string, data: UpdateServiceDto) {
-    return this.prisma.service.update({
-      where: { id },
-      data: {
-        name: data.name,
-        description: data.description,
-        price: data.price ? new Prisma.Decimal(data.price) : data.price === null ? null : undefined,
-        priceLabel: data.priceLabel,
-        isFeatured: data.isFeatured,
-        categoryId: data.categoryId,
-      },
-      include: {
-        category: true,
-      },
+  async updateService(id: string, businessId: string, data: UpdateServiceDto) {
+    return this.prisma.$transaction(async (tx) => {
+      await assertCategoryOwnership(tx, businessId, data.categoryId);
+      return tx.service.update({
+        where: { id, businessId, deletedAt: null },
+        data: {
+          name: data.name,
+          description: data.description,
+          price:
+            data.price !== undefined && data.price !== null
+              ? new Prisma.Decimal(data.price)
+              : data.price === null
+                ? null
+                : undefined,
+          priceLabel: data.priceLabel,
+          isFeatured: data.isFeatured,
+          categoryId: data.categoryId,
+        },
+        include: {
+          category: true,
+        },
+      });
     });
   }
 
-  async deleteService(id: string) {
+  async deleteService(id: string, businessId: string) {
     return this.prisma.service.delete({
-      where: { id },
+      where: { id, businessId, deletedAt: null },
     });
   }
 }
