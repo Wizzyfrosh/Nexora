@@ -21,6 +21,8 @@ Implemented 16 October 2026. This closes a bounded M5 slice, not the operational
 
 Acceptance rechecks publication, current entitlement, owner verification/deletion, released website schema and owned READY section media inside the tenant-locked transaction. A canonical-unavailable business cannot accept events. Deduplication is `(businessId,eventId)`; duplicates are acknowledged before capacity checks and cannot change type or count. Each tenant is capped at 1,000 new events/rolling hour and 10,000 pending/review rows. These are pilot abuse controls, not plan entitlements. Process-local IP throttles are not a distributed bot defence.
 
+The capacity lock does not mark the business profile as edited on visitor activity. Fresh signup now seeds released Hero/Contact field names so the initial saved layout can pass eligibility after verification/publication. Existing legacy saved content remains subject to explicit owner review rather than silent conversion.
+
 ## Durable queue and worker
 
 New tables `analytics_observations` and `analytics_daily` are separate from legacy AnalyticsEvent rows. Ingestion only writes a durable minimal observation. A short PostgreSQL transaction locks one eligible event with FOR UPDATE SKIP LOCKED, upserts its UTC daily counter and marks it DONE together. A crash/failure rolls both writes back. Concurrent workers skip claimed rows; retries cannot double-increment a committed event.
