@@ -199,11 +199,18 @@ describe('Private analytics on isolated PostgreSQL', () => {
     expect(response.body.data.collectionEnabled).toBe(false);
   });
   it('stores only minimal event data, ignoring forwarded identity headers', async () => {
+    const before = await prisma.business.findUniqueOrThrow({
+      where: { id: a.id },
+    });
     const response = await capture()
       .set('X-Forwarded-For', '198.51.100.42')
       .set('User-Agent', 'Private test agent')
       .expect(201);
     expect(response.body.data).toEqual({ accepted: true });
+    expect(
+      (await prisma.business.findUniqueOrThrow({ where: { id: a.id } }))
+        .updatedAt,
+    ).toEqual(before.updatedAt);
     const row = await prisma.analyticsObservation.findFirstOrThrow({
       where: { businessId: a.id },
     });

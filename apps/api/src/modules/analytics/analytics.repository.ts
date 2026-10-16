@@ -32,11 +32,11 @@ export class AnalyticsRepository {
   ) {
     return this.prisma.$transaction(async (tx) => {
       // Serialize dedupe + tenant/hour capacity across API replicas.
-      const locked = await tx.business.updateMany({
-        where: { id: businessId, deletedAt: null },
-        data: { updatedAt: new Date() },
-      });
-      if (!locked.count)
+      // Lock without marking the owner's profile as edited on each visitor event.
+      const locked = await tx.$queryRaw<
+        { id: string }[]
+      >`SELECT "id" FROM "businesses" WHERE "id" = ${businessId} AND "deletedAt" IS NULL FOR UPDATE`;
+      if (!locked.length)
         throw new NotFoundException('Business website is unavailable');
       const b = await tx.business.findUniqueOrThrow({
         where: { id: businessId },
