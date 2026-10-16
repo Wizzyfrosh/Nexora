@@ -17,6 +17,7 @@ Inspect slow queries and EXPLAIN before adding replicas or indexes. Scale comput
 ## Public delivery
 
 Begin with current-policy dynamic public reads until unpublish/expiry correctness is proven.
+M4 implements no-store repeatable-read storefront snapshots, 50-item catalogue paging, a 100-file tenant media budget and a first-100-eligible-business pilot sitemap. Contact writes serialize the 100/tenant/hour cap in PostgreSQL. These are technical guardrails, not measured capacity or commercial plan limits. Segment the sitemap and add shared IP/bot controls before expanding beyond the pilot; see PUBLIC_WEBSITE.md. No long-term public cache or load-test performance claim is introduced.
 Later cache public projections using tenant ID + published revision and a TTL bounded by entitlement expiry. Purge on publish/unpublish/suspend/delete/slug change; never mix owner preview with public cache.
 Optimise image dimensions/formats, lazy-load below-the-fold assets and avoid blocking external fonts/scripts. Gallery imagery can fail independently of the core UI.
 
