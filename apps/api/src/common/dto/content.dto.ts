@@ -121,7 +121,9 @@ export class ThemeRequest {
   @IsObject() typography!: Record<string, string>;
 }
 export class SectionsRequest {
-  @IsArray() @ArrayMaxSize(30) sections!: unknown[];
+  // Prevent implicit Array conversion of each plain section object. The service
+  // performs bounded recursive validation before any persistence operation.
+  @IsArray() @ArrayMaxSize(30) @Type(() => Object) sections!: unknown[];
 }
 export class DomainRequest {
   @IsString() @Length(1, 253) customDomain!: string;

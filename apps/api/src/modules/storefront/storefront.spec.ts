@@ -2,6 +2,7 @@ import {
   BadRequestException,
   NotFoundException,
   ServiceUnavailableException,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -11,8 +12,33 @@ import {
 import { StorefrontService } from './storefront.service';
 import { StorefrontRepository } from './storefront.repository';
 import { configuration } from '../../config/configuration';
+import { SectionsRequest } from '../../common/dto/content.dto';
+import { validateSections } from '../website/website-input';
 
 describe('Released storefront contracts', () => {
+  it('preserves plain section objects through the actual HTTP ValidationPipe', async () => {
+    const sections = [
+      {
+        type: 'HERO',
+        content: { headline: 'Real story', buttonLink: '#contact' },
+      },
+      { type: 'CONTACT', content: { email: true } },
+    ];
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    });
+    const result: SectionsRequest = await pipe.transform(
+      { sections },
+      { type: 'body', metatype: SectionsRequest },
+    );
+    expect(result.sections).toEqual(sections);
+    expect(Array.isArray(result.sections[0])).toBe(false);
+    expect(() => validateSections(result.sections)).not.toThrow();
+    expect(() => releasedSections(result.sections)).not.toThrow();
+  });
   it.each(['@ade-studio', '%40ade-studio'])(
     'normalises a Next route segment %s',
     (handle) => {
