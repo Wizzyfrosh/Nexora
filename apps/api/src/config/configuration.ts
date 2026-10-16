@@ -49,6 +49,7 @@ export interface EnvironmentVariables {
 }
 
 export const configuration = () => ({
+  analyticsEnabled: process.env.ANALYTICS_ENABLED === 'true',
   publishingEnabled: process.env.PUBLIC_PUBLISHING_ENABLED === 'true',
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '4000', 10),

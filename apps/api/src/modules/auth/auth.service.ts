@@ -128,10 +128,10 @@ export class AuthService {
             type: 'HERO',
             order: 0,
             content: {
-              title: `Welcome to ${dto.firstName}'s Business`,
-              subtitle: 'Your professional mini website is ready',
-              ctaText: 'Get Started',
-              ctaLink: '#contact',
+              headline: `Welcome to ${dto.firstName}'s Business`,
+              subheadline: 'Get in touch to learn about our business.',
+              buttonText: 'Get in touch',
+              buttonLink: '#contact',
             },
           },
           {
@@ -149,8 +149,8 @@ export class AuthService {
             order: 2,
             content: {
               title: 'Contact Us',
-              showForm: true,
-              showWhatsApp: true,
+              email: true,
+              whatsapp: true,
             },
           },
         ],

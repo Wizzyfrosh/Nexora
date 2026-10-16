@@ -45,6 +45,8 @@ If server-side remote fetch is introduced: allowlist providers or block loopback
 
 ## Release gate
 
+The new first-party analytics pipeline uses explicit browser permission, DNT/GPC overrides, strict minimal event DTOs, per-event UUID deduplication, tenant/hour capacity and no stored session/IP/metadata fields. The legacy IP-derived WhatsApp route is retired. Raw observations and aggregate tables have bounded worker retention; legacy raw rows require separate review. Public counts remain forgeable observations, never billing or authorization evidence. Scheduler, log/backup retention and distributed abuse controls are deployment gates; collection defaults off. See ANALYTICS.md.
+
 Tenant-negative integration tests, webhook replay/concurrency tests, expiry/unpublish tests, secret scanning, dependency review, staging cookie test and backup restore exercise must pass.
 Do not conflate passing unit tests with proof that these vulnerabilities are covered.
 

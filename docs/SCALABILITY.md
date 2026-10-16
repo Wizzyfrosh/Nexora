@@ -31,6 +31,8 @@ Do not put an always-running BullMQ worker into a request-only lifecycle.
 
 ## Analytics and fairness
 
+The first-party pilot uses indexed PostgreSQL observation/daily tables, tenant-serialized acceptance (1,000/hour, 10,000 queued/review) and SKIP LOCKED transaction processing. Each worker pass handles at most 50 events and 1,000 old rows per table. Date windows are limited to 7/30/90 days; aggregate reads return at most two event types per UTC day, with separately indexed retained CRM enquiry counts. Configure/measure scheduled throughput and oldest-event age before enabling collection. No distributed IP defence, load-tested capacity or Redis worker is claimed; see ANALYTICS.md.
+
 Batch writes; bounded payloads; per-tenant event quotas/sampling; daily aggregates; retention cleanup.
 Analytics loss must not block profile/catalogue edits. Never give unknown events unbounded metadata.
 Rate limit by actor and tenant as well as IP; handle distributed rate-limit state when adding replicas.

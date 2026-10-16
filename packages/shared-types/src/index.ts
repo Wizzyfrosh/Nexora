@@ -9,3 +9,4 @@ export * from './billing';
 export * from './account';
 export * from './media';
 export * from './storefront';
+export * from './analytics';

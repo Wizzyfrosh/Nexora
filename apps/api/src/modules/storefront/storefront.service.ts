@@ -221,6 +221,7 @@ export class StorefrontService {
         const text = (v: string | null, max: number) =>
           v ? v.slice(0, max) : null;
         return {
+          analyticsEnabled: this.config.get<boolean>('analyticsEnabled') === true,
           business: {
             id: b.id,
             name: b.name.slice(0, 160),

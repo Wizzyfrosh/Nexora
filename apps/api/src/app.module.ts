@@ -25,6 +25,7 @@ import { OriginGuard } from './common/guards/origin.guard';
 import { validateEnvironment } from './config/validate-environment';
 import { MediaModule } from './modules/media/media.module';
 import { StorefrontModule } from './modules/storefront/storefront.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   controllers: [AppController],
@@ -69,6 +70,7 @@ import { StorefrontModule } from './modules/storefront/storefront.module';
     CrmModule,
     MediaModule,
     StorefrontModule,
+    AnalyticsModule,
   ],
   providers: [
     AppService,

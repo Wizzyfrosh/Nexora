@@ -40,6 +40,7 @@ export interface StorefrontSection {
   };
 }
 export interface Storefront {
+  analyticsEnabled: boolean;
   business: {
     id: string;
     slug: string;

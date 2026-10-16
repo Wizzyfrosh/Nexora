@@ -289,6 +289,7 @@ describe('Public website lifecycle on isolated PostgreSQL', () => {
     expect(response.headers['cache-control']).toBe('no-store');
     expect(Object.keys(response.body.data).sort()).toEqual(
       [
+        'analyticsEnabled',
         'business',
         'page',
         'pageSize',
