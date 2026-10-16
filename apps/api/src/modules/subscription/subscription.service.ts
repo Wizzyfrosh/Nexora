@@ -11,9 +11,10 @@ import { createHash, randomUUID } from 'node:crypto';
 import { SubscriptionRepository } from './subscription.repository';
 import { PaystackService } from './paystack.service';
 import { SubscriptionPlan } from '@nexora/shared-types';
-import { SubscriptionPlan as PrismaPlan } from '@prisma/client';
 import { AuthRepository } from '../auth/auth.repository';
 import { BusinessService } from '../business/business.service';
+import { BillingLifecycleService } from './billing-lifecycle.service';
+import { validTransactionId } from './billing-policy';
 
 @Injectable()
 export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
@@ -27,6 +28,7 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
     private readonly authRepo: AuthRepository,
     private readonly businessService: BusinessService,
     private readonly config: ConfigService,
+    private readonly lifecycle: BillingLifecycleService,
   ) {}
 
   onModuleInit() {
@@ -57,15 +59,19 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException('Subscription not found');
     if (sub.status === 'SUSPENDED')
       throw new BadRequestException('Subscription requires review');
+    if (sub.paystackSubscriptionId)
+      throw new BadRequestException(
+        'Manage the existing recurring subscription before opening another checkout',
+      );
     if (
       sub.status === 'ACTIVE' &&
       sub.currentPeriodEnd &&
       sub.currentPeriodEnd > new Date() &&
-      sub.plan !== dto.plan
+      sub.plan !== String(dto.plan)
     ) {
       throw new BadRequestException('Active plan changes require review');
     }
-    const plan = await this.subRepo.findPlanByName(dto.plan as PrismaPlan);
+    const plan = await this.subRepo.findPlanByName(dto.plan);
     if (
       !plan ||
       plan.deletedAt ||
@@ -159,7 +165,7 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
       !data.customer?.customer_code ||
       !payment.purchasedPlan ||
       payment.billingCycle !== 'yearly' ||
-      !/^[0-9]+$/.test(String(data.id)) ||
+      !validTransactionId(data.id) ||
       !Number.isFinite(paidAt.getTime()) ||
       paidAt.getTime() > Date.now() + 300000 ||
       paidAt.getTime() < payment.createdAt.getTime() - 300000 ||
@@ -176,12 +182,14 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
   async handleWebhook(signature: string | undefined, raw: Buffer | undefined) {
     if (!this.paystackService.validateWebhookSignature(signature, raw))
       throw new BadRequestException('Invalid signature');
-    let payload: {
-      event?: unknown;
-      data?: { reference?: unknown; subscription_code?: unknown; id?: unknown };
-    };
+    const object = (value: unknown): Record<string, unknown> =>
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : {};
+    let payload: Record<string, unknown>;
     try {
-      payload = JSON.parse(raw!.toString('utf8'));
+      const decoded: unknown = JSON.parse(raw!.toString('utf8'));
+      payload = object(decoded);
     } catch {
       throw new BadRequestException('Invalid event');
     }
@@ -191,13 +199,16 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
       payload.event.length > 100
     )
       throw new BadRequestException('Invalid event');
-    const reference =
-      typeof payload.data?.reference === 'string' &&
-      payload.data.reference.length <= 200
-        ? payload.data.reference
-        : null;
+    const field = (value: unknown): string | null =>
+      typeof value === 'string' && value.length <= 200 ? value : null;
+    const data = object(payload.data);
+    const transaction = object(data.transaction);
+    const subscription = object(data.subscription);
+    const customer = object(data.customer);
+    const reference = field(data.reference) || field(transaction.reference);
     // Durable minimal receipt only. Never keep card authorization in event storage.
-    const objectId = payload.data?.subscription_code ?? payload.data?.id;
+    const objectId =
+      data.subscription_code ?? subscription.subscription_code ?? data.id;
     const providerObjectId =
       (typeof objectId === 'string' || typeof objectId === 'number') &&
       String(objectId).length <= 200
@@ -208,6 +219,19 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
       payload.event,
       reference,
       providerObjectId,
+      payload.event.startsWith('invoice.')
+        ? {
+            subscriptionCode: field(subscription.subscription_code),
+            invoiceCode: field(data?.invoice_code),
+            reference,
+            amount: typeof data?.amount === 'number' ? data.amount : null,
+            currency: field(transaction.currency),
+            customerCode: field(customer.customer_code),
+            periodStart: field(data?.period_start),
+            periodEnd: field(data?.period_end),
+            paid: data?.paid === true || data?.paid === 1,
+          }
+        : {},
     );
   }
 
@@ -216,13 +240,19 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
     this.running = true;
     try {
       await this.checkExpiredSubscriptions();
+      await this.subRepo.enqueueProviderSyncs(new Date());
       for (const event of await this.subRepo.dueEvents(new Date())) {
         if (!(await this.subRepo.claimEvent(event.id, new Date())).count)
           continue;
         try {
           if (event.event !== 'charge.success' || !event.reference) {
-            // No speculative cancellation/failure changes to already-paid service.
-            await this.subRepo.finishEvent(event.id, 'REVIEW');
+            const handled = await this.lifecycle.process(event, (reference) =>
+              this.verifyKnownPayment(reference),
+            );
+            await this.subRepo.finishEvent(
+              event.id,
+              handled ? 'DONE' : 'REVIEW',
+            );
             continue;
           }
           await this.verifyKnownPayment(event.reference);
@@ -241,5 +271,27 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
     } finally {
       this.running = false;
     }
+  }
+
+  async billingStatus(userId: string, businessId: string) {
+    const business = await this.businessService.getBusinessProfile(businessId);
+    if (!business || business.ownerId !== userId || business.deletedAt)
+      throw new NotFoundException('Business not found');
+    const sub = await this.subRepo.findByBusinessId(businessId);
+    if (!sub || sub.deletedAt)
+      throw new NotFoundException('Subscription not found');
+    return {
+      plan: sub.plan,
+      status: sub.status,
+      renewalStatus: sub.renewalStatus,
+      currentPeriodEnd: sub.currentPeriodEnd?.toISOString() ?? null,
+      linked: Boolean(sub.paystackSubscriptionId && sub.billingAnchorPaymentId),
+      cancelRequested: Boolean(sub.cancelRequestedAt),
+    };
+  }
+
+  async cancelRenewal(userId: string, businessId: string) {
+    this.paystackService.assertTestCheckout();
+    return this.subRepo.requestCancellation(userId, businessId);
   }
 }

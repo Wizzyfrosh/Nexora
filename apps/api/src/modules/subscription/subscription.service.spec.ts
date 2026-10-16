@@ -5,6 +5,7 @@ import { PaystackService } from './paystack.service';
 import { AuthRepository } from '../auth/auth.repository';
 import { BusinessService } from '../business/business.service';
 import { SubscriptionPlan } from '@nexora/shared-types';
+import { BillingLifecycleService } from './billing-lifecycle.service';
 
 describe('Subscription purchase policy', () => {
   const ref = 'nexora-test';
@@ -41,14 +42,12 @@ describe('Subscription purchase policy', () => {
       findByBusinessId: jest
         .fn()
         .mockResolvedValue({ id: 'sub', status: 'TRIAL' }),
-      findPlanByName: jest
-        .fn()
-        .mockResolvedValue({
-          name: 'BASIC',
-          priceNgn: 50000,
-          billingCycle: 'yearly',
-          paystackPlanCode: 'PLN_test',
-        }),
+      findPlanByName: jest.fn().mockResolvedValue({
+        name: 'BASIC',
+        priceNgn: 50000,
+        billingCycle: 'yearly',
+        paystackPlanCode: 'PLN_test',
+      }),
       createPayment: jest.fn(),
       receiveEvent: jest.fn(),
       expire: jest.fn(),
@@ -56,6 +55,7 @@ describe('Subscription purchase policy', () => {
       claimEvent: jest.fn().mockResolvedValue({ count: 1 }),
       finishEvent: jest.fn(),
       retryEvent: jest.fn(),
+      enqueueProviderSyncs: jest.fn(),
     };
     provider = {
       verifyTransaction: jest.fn().mockResolvedValue({ data: charge }),
@@ -75,6 +75,9 @@ describe('Subscription purchase policy', () => {
         getBusinessProfile: jest.fn().mockResolvedValue({ ownerId: 'owner' }),
       } as unknown as BusinessService,
       new ConfigService({ frontendUrl: 'http://localhost:3000' }),
+      {
+        process: jest.fn().mockResolvedValue(false),
+      } as unknown as BillingLifecycleService,
     );
   });
 

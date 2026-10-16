@@ -32,6 +32,25 @@ export class SubscriptionController {
   constructor(private readonly subService: SubscriptionService) {}
 
   @UseGuards(JwtAuthGuard, TenantGuard)
+  @Get(':businessId/status')
+  async billingStatus(
+    @CurrentUser('id') userId: string,
+    @Param('businessId') businessId: string,
+  ) {
+    return this.subService.billingStatus(userId, businessId);
+  }
+
+  @UseGuards(JwtAuthGuard, TenantGuard)
+  @Post(':businessId/cancel-renewal')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async cancelRenewal(
+    @CurrentUser('id') userId: string,
+    @Param('businessId') businessId: string,
+  ) {
+    return this.subService.cancelRenewal(userId, businessId);
+  }
+
+  @UseGuards(JwtAuthGuard, TenantGuard)
   @Post(':businessId/initiate')
   @ResponseMessage('Subscription checkout initialized')
   async initiateSubscription(

@@ -1,5 +1,13 @@
 # Verification report — 15 October 2026
 
+## Recurring billing follow-up
+
+- Local: 123 unit tests across 12 suites pass; all three workspace builds pass. API type check including integration sources and targeted changed web lint pass.
+- PostgreSQL regressions passed **47/47** (29 billing + 18 tenant), including exact mapping, concurrent invoice replay, cancellation, failure/ordering, mismatches, latest-invoice recovery, owner substitution, suspended renewals and stale provider snapshots. Evidence: [CI run 38791724375](https://github.com/Wizzyfrosh/Nexora/actions/runs/38791724375), tested source commit acf5ce6ca21a21446d91e3f02eee3d8ed453076b. Both CI jobs passed; all three migrations applied and no schema drift was detected.
+- Targeted billing API lint now passes without unsafe-any errors. Chromium checks at 1440x1000 and 390x844 pass: confirmation/keep/cancel, disabled Premium, no invented metrics, failed verification then retry, no horizontal overflow or page errors. These use controlled HTTP fixtures, not a real provider session.
+- Added an additive SQL migration; CI applies all three migrations and checks schema drift on disposable PostgreSQL 16.
+- No provider account was charged or refunded. Provider transport remains mocked in automated tests. See RECURRING_BILLING.md for live launch blockers.
+
 ## Payment hardening follow-up
 
 - Local monorepo build: 3/3 workspaces pass (unchanged web/shared builds cached).

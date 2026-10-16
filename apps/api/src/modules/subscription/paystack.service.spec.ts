@@ -56,18 +56,16 @@ describe('Paystack transport security', () => {
     );
   });
   it('rejects a substituted checkout reference or URL', async () => {
-    jest
-      .spyOn(global, 'fetch')
-      .mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          status: true,
-          data: {
-            reference: 'other',
-            authorization_url: 'https://attacker.test',
-          },
-        }),
-      } as Response);
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: true,
+        data: {
+          reference: 'other',
+          authorization_url: 'https://attacker.test',
+        },
+      }),
+    } as Response);
     await expect(
       provider.initializeTransaction(
         'owner@example.test',

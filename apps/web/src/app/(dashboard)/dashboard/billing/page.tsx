@@ -1,285 +1,336 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/contexts/AuthContext";
 import { SubscriptionService } from "@/lib/api/subscription";
-import { SubscriptionPlan } from "@nexora/shared-types";
+import { BillingStatus, SubscriptionPlan } from "@nexora/shared-types";
 
-function BillingPageContent() {
+const message = (error: unknown) =>
+  error instanceof Error ? error.message : "Please try again.";
+
+function BillingContent() {
   const { user, refreshUser } = useAuth();
-  const business = user?.businesses?.[0];
-  const subscription = business?.subscription;
+  const businessId = user?.businesses?.[0]?.id;
+  const params = useSearchParams();
+  const reference = params.get("reference");
+  const verifiedRef = useRef<string | null>(null);
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
+  const [statusError, setStatusError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
-  const [errorMessage, setErrorMessage] = useState('');
-
-  const searchParams = useSearchParams();
+  const reload = useCallback(async () => {
+    if (!businessId) return;
+    try {
+      const data = await SubscriptionService.status(businessId);
+      setBilling(data);
+      setStatusError("");
+    } catch (error) {
+      setStatusError(message(error));
+    }
+  }, [businessId]);
 
   useEffect(() => {
-    const reference = searchParams.get('reference');
-    if (reference) {
-      // Clear the query parameter so refreshing doesn't re-trigger verification
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
-      
-      verifyPayment(reference);
-    }
-  }, [searchParams]);
+    if (!businessId) return;
+    let current = true;
+    SubscriptionService.status(businessId).then(
+      (data) => {
+        if (current) {
+          setBilling(data);
+          setStatusError("");
+        }
+      },
+      (error) => {
+        if (current) setStatusError(message(error));
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [businessId]);
+  useEffect(() => {
+    if (billing?.renewalStatus !== "CANCEL_REQUESTED") return;
+    const timer = setInterval(() => void reload(), 10000);
+    return () => clearInterval(timer);
+  }, [billing?.renewalStatus, reload]);
 
-  const verifyPayment = async (ref: string) => {
-    setVerificationStatus('verifying');
-    try {
-      const result = await SubscriptionService.verifyPayment(ref);
-      if (result.success) {
-        setVerificationStatus('success');
+  const verify = useCallback(
+    async (value: string) => {
+      setVerifying(true);
+      setActionError("");
+      try {
+        const result = await SubscriptionService.verifyPayment(value);
+        if (!result.success)
+          throw new Error(result.message || "Payment is not confirmed yet.");
+        setNotice("Payment confirmed. Your paid access has been updated.");
         await refreshUser();
-      } else {
-        setVerificationStatus('error');
-        setErrorMessage(result.message || 'Payment verification failed');
+        await reload();
+        window.history.replaceState({}, "", "/dashboard/billing");
+      } catch (error) {
+        setActionError(message(error));
+      } finally {
+        setVerifying(false);
       }
-    } catch (err: any) {
-      console.error(err);
-      setVerificationStatus('error');
-      setErrorMessage(err.message || 'An error occurred during payment verification');
-    }
-  };
+    },
+    [refreshUser, reload],
+  );
 
-  const handleUpgrade = async (plan: 'BASIC' | 'PREMIUM') => {
-    if (!business) return;
-    setIsLoading(true);
+  useEffect(() => {
+    if (!reference || !businessId || verifiedRef.current === reference) return;
+    verifiedRef.current = reference;
+    void verify(reference);
+  }, [reference, businessId, verify]);
+
+  async function checkout(plan: SubscriptionPlan) {
+    if (!businessId) return;
+    setBusy(true);
+    setActionError("");
     try {
-      const callbackUrl = `${window.location.origin}/dashboard/billing`;
-      const response = await SubscriptionService.initiateSubscription(
-        business.id,
-        plan as unknown as SubscriptionPlan,
-        callbackUrl
+      const result = await SubscriptionService.initiateSubscription(
+        businessId,
+        plan,
+        window.location.origin + "/dashboard/billing",
       );
-      if (response.authorizationUrl) {
-        window.location.href = response.authorizationUrl;
-      }
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message || 'Failed to initiate checkout. Please try again.');
+      window.location.assign(result.authorizationUrl);
+    } catch (error) {
+      setActionError(message(error));
     } finally {
-      setIsLoading(false);
+      setBusy(false);
     }
-  };
+  }
 
-  // Helper properties to render subscription state
-  const isTrial = !subscription || subscription.plan === 'TRIAL' || subscription.status === 'TRIAL';
-  const isBasic = subscription?.plan === 'BASIC' && subscription?.status === 'ACTIVE';
-  const isPremium = subscription?.plan === 'PREMIUM' && subscription?.status === 'ACTIVE';
-
-  let currentPlanTitle = "Free Trial";
-  let currentPlanPrice = "₦0";
-  let currentPlanCycle = "/ forever";
-  let planStatusBadge = "Trial Active";
-  let remainingText = "";
-
-  if (subscription) {
-    const now = new Date();
-    const endDate = subscription.status === 'TRIAL' 
-      ? new Date(subscription.trialEndDate) 
-      : (subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd) : null);
-    
-    if (endDate) {
-      const diffTime = Math.max(0, endDate.getTime() - now.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (subscription.status === 'TRIAL') {
-        remainingText = `${diffDays} days remaining in trial`;
-        planStatusBadge = "Trial Active";
-      } else if (subscription.status === 'ACTIVE') {
-        remainingText = `Renews in ${diffDays} days`;
-        planStatusBadge = "Active";
-      } else {
-        remainingText = `Status: ${subscription.status.replace('_', ' ')}`;
-        planStatusBadge = subscription.status;
-      }
-    }
-
-    if (subscription.plan === 'BASIC') {
-      currentPlanTitle = "Basic Plan";
-      currentPlanPrice = "₦50,000";
-      currentPlanCycle = "/ year";
-    } else if (subscription.plan === 'PREMIUM') {
-      currentPlanTitle = "Premium Plan";
-      currentPlanPrice = "₦120,000";
-      currentPlanCycle = "/ year";
+  async function cancelRenewal() {
+    if (!businessId) return;
+    setBusy(true);
+    setActionError("");
+    try {
+      const result = await SubscriptionService.cancelRenewal(businessId);
+      setNotice(
+        result.status === "REVIEW"
+          ? "Your cancellation needs support review. Renewal has not been confirmed as stopped."
+          : result.status === "DONE"
+            ? "Renewal is stopped. Your paid access remains until its expiry."
+            : "Cancellation requested. We are waiting for Paystack confirmation. Your paid access remains until its expiry.",
+      );
+      setConfirmCancel(false);
+      await reload();
+    } catch (error) {
+      setActionError(message(error));
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Billing & Subscriptions</h1>
-          <p className="text-muted-foreground mt-1">Manage your plan, billing cycle, and payment methods.</p>
-        </div>
+    <div className="space-y-7 max-w-5xl">
+      <div>
+        <p className="text-sm font-semibold text-primary mb-2">
+          Your workspace
+        </p>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Billing & subscriptions
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Review paid access and manage annual renewal.
+        </p>
       </div>
-
-      {/* Verification Overlays */}
-      {verificationStatus === 'verifying' && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center z-50">
-          <div className="glass p-8 rounded-2xl border border-primary/20 max-w-md w-full text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <h2 className="text-xl font-bold">Verifying Payment</h2>
-            <p className="text-muted-foreground text-sm">Please wait while we confirm your transaction with Paystack.</p>
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm">
+        Checkout is in test mode. Live payments are unavailable while launch
+        checks are completed.
+      </div>
+      <div aria-live="polite">
+        {verifying && <p role="status">Checking your payment with Paystack…</p>}
+        {notice && (
+          <p role="status" className="rounded-xl bg-primary/5 p-4">
+            {notice}
+          </p>
+        )}
+        {actionError && (
+          <div
+            role="alert"
+            className="rounded-xl border border-destructive/30 p-4 text-destructive"
+          >
+            <p>{actionError}</p>
+            {reference && (
+              <Button
+                className="mt-3"
+                variant="outline"
+                disabled={verifying}
+                onClick={() => void verify(reference)}
+              >
+                Retry verification
+              </Button>
+            )}
           </div>
-        </div>
-      )}
-
-      {verificationStatus === 'success' && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center z-50">
-          <div className="glass p-8 rounded-2xl border border-emerald-500/20 max-w-md w-full text-center space-y-4 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-[50px] rounded-full"></div>
-            <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-2">
-              <CheckCircle2 className="w-8 h-8" />
-            </div>
-            <h2 className="text-2xl font-bold text-emerald-500">Upgrade Successful!</h2>
-            <p className="text-muted-foreground text-sm">Thank you! Your business profile has been upgraded successfully. All premium features are now active.</p>
-            <Button className="w-full mt-4" variant="default" onClick={() => setVerificationStatus('idle')}>
-              Back to Billing
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {verificationStatus === 'error' && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center z-50">
-          <div className="glass p-8 rounded-2xl border border-destructive/20 max-w-md w-full text-center space-y-4 shadow-2xl relative overflow-hidden">
-            <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-2">
-              <span className="text-3xl font-bold">×</span>
-            </div>
-            <h2 className="text-2xl font-bold text-destructive">Payment Failed</h2>
-            <p className="text-muted-foreground text-sm">{errorMessage || 'We could not verify your payment. Please contact support if this issue persists.'}</p>
-            <Button className="w-full mt-4" variant="outline" onClick={() => setVerificationStatus('idle')}>
-              Dismiss
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Current Plan Overview */}
-      <Card className="glass relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-[80px] rounded-full -z-10"></div>
+        )}
+      </div>
+      <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Current Plan</CardTitle>
-              <CardDescription>You are currently on the {currentPlanTitle}</CardDescription>
-            </div>
-            <Badge variant="outline" className="border-primary text-primary px-3 py-1 text-sm">{planStatusBadge}</Badge>
-          </div>
+          <CardTitle>Current subscription</CardTitle>
+          <CardDescription>
+            Access dates and renewal status come from your account.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
-            <div className="space-y-1">
-              <p className="text-4xl font-bold">{currentPlanPrice} <span className="text-lg font-medium text-muted-foreground">{currentPlanCycle}</span></p>
-              {remainingText && (
-                <p className={`text-sm font-medium mt-2 ${subscription?.status === 'EXPIRED' || subscription?.status === 'SUSPENDED' ? 'text-destructive' : 'text-primary'}`}>
-                  {remainingText}
+        <CardContent className="space-y-5">
+          {statusError ? (
+            <div role="alert">
+              <p>{statusError}</p>
+              <Button
+                variant="outline"
+                className="mt-3"
+                onClick={() => void reload()}
+              >
+                Retry status
+              </Button>
+            </div>
+          ) : !billing ? (
+            <p role="status">Loading subscription…</p>
+          ) : (
+            <>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-semibold">
+                  {billing.plan === "TRIAL" ? "7-day trial" : billing.plan}
+                </h2>
+                <Badge variant="outline">{billing.status}</Badge>
+              </div>
+              {billing.currentPeriodEnd && (
+                <p>
+                  Paid access ends{" "}
+                  {new Date(billing.currentPeriodEnd).toLocaleDateString(
+                    "en-NG",
+                    { dateStyle: "long" },
+                  )}
+                  .
                 </p>
               )}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium mb-2">Workspace Isolation & Storage</p>
-              <div className="w-full bg-secondary rounded-full h-2.5 mb-1">
-                <div className="bg-primary h-2.5 rounded-full" style={{ width: isPremium ? "10%" : isBasic ? "25%" : "45%" }}></div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {isPremium ? "Unlimited Storage Active" : isBasic ? "250MB of 10GB used" : "450MB of 1GB used (Free Tier limit)"}
+              <p className="text-sm text-muted-foreground">
+                Renewal:{" "}
+                {billing.renewalStatus === "UNLINKED"
+                  ? "Provider mapping not confirmed. No renewal date is promised."
+                  : billing.renewalStatus.replaceAll("_", " ")}
               </p>
-            </div>
-          </div>
+              {billing.linked &&
+                !billing.cancelRequested &&
+                ["active", "attention"].includes(billing.renewalStatus) &&
+                (confirmCancel ? (
+                  <div className="rounded-xl border p-4 space-y-3">
+                    <p>
+                      Stop future renewal? This preserves your paid access
+                      through its expiry date.
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        disabled={busy}
+                        onClick={() => void cancelRenewal()}
+                      >
+                        Confirm stop renewal
+                      </Button>
+                      <Button
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => setConfirmCancel(false)}
+                      >
+                        Keep renewal
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => setConfirmCancel(true)}
+                  >
+                    Stop automatic renewal
+                  </Button>
+                ))}
+              {billing.cancelRequested && (
+                <p className="text-sm">
+                  A cancellation request is on record. Refresh the status to
+                  check provider confirmation.
+                </p>
+              )}
+              <Button
+                variant="ghost"
+                disabled={busy}
+                onClick={() => void reload()}
+              >
+                Refresh status
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
-
-      {/* Plans */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
-        {/* Trial / Free */}
-        <Card className={`glass transition-all ${isTrial ? 'border-primary/40 shadow-md' : 'opacity-60'}`}>
-          <CardHeader>
-            <CardTitle>7-Day Trial</CardTitle>
-            <CardDescription>Experience the full platform risk-free.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-3xl font-bold mb-4">₦0 <span className="text-sm font-medium text-muted-foreground">/ yr</span></div>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-center gap-3 text-muted-foreground"><CheckCircle2 className="w-4 h-4 text-muted-foreground" /> Full access during trial</li>
-              <li className="flex items-center gap-3 text-muted-foreground"><CheckCircle2 className="w-4 h-4 text-muted-foreground" /> Limited templates</li>
-              <li className="flex items-center gap-3 text-muted-foreground"><CheckCircle2 className="w-4 h-4 text-muted-foreground" /> Nexora branding</li>
-            </ul>
-          </CardContent>
-          <CardFooter>
-            <Button variant="secondary" className="w-full" disabled>
-              {isTrial ? "Current Plan" : "Trial Expired"}
-            </Button>
-          </CardFooter>
-        </Card>
-
-        {/* Basic */}
-        <Card className={`glass relative overflow-hidden transition-all hover:-translate-y-1 hover:shadow-lg ${isBasic ? 'border-primary shadow-lg shadow-primary/10' : 'border-border/50'}`}>
-          <div className="absolute top-0 right-0 p-1 px-3 bg-primary text-primary-foreground text-xs font-bold rounded-bl-lg">POPULAR</div>
-          <CardHeader>
-            <CardTitle>Basic</CardTitle>
-            <CardDescription>Everything you need for a growing business.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-3xl font-bold mb-4">₦50,000 <span className="text-sm font-medium text-muted-foreground">/ yr</span></div>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-center gap-3"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Unlimited products & services</li>
-              <li className="flex items-center gap-3"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Professional templates</li>
-              <li className="flex items-center gap-3"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Basic SEO tools</li>
-              <li className="flex items-center gap-3"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> WhatsApp integration</li>
-              <li className="flex items-center gap-3"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Analytics dashboard</li>
-            </ul>
-          </CardContent>
-          <CardFooter>
-            <Button 
-              variant={isBasic ? "secondary" : "gradient"} 
-              className="w-full"
-              onClick={() => handleUpgrade('BASIC')}
-              disabled={isLoading || isBasic}
-            >
-              {isBasic ? "Current Plan" : isLoading ? "Redirecting..." : "Upgrade to Basic"}
-            </Button>
-          </CardFooter>
-        </Card>
-
-        {/* Premium */}
-        <Card className={`glass transition-all hover:-translate-y-1 hover:shadow-lg ${isPremium ? 'border-primary shadow-lg shadow-primary/10' : 'border-border/50'}`}>
-          <CardHeader>
-            <CardTitle>Premium</CardTitle>
-            <CardDescription>Advanced features for serious scaling.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-3xl font-bold mb-4">₦120,000 <span className="text-sm font-medium text-muted-foreground">/ yr</span></div>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-center gap-3"><CheckCircle2 className="w-4 h-4 text-accent" /> Everything in Basic</li>
-              <li className="flex items-center gap-3"><CheckCircle2 className="w-4 h-4 text-accent" /> Custom domain support</li>
-              <li className="flex items-center gap-3"><CheckCircle2 className="w-4 h-4 text-accent" /> Premium templates</li>
-              <li className="flex items-center gap-3"><CheckCircle2 className="w-4 h-4 text-accent" /> Advanced analytics</li>
-              <li className="flex items-center gap-3"><CheckCircle2 className="w-4 h-4 text-accent" /> Priority support</li>
-            </ul>
-          </CardContent>
-          <CardFooter>
-            <Button 
-              variant={isPremium ? "secondary" : "outline"} 
-              className="w-full"
-              onClick={() => handleUpgrade('PREMIUM')}
-              disabled={isLoading || isPremium}
-            >
-              {isPremium ? "Current Plan" : isLoading ? "Redirecting..." : "Upgrade to Premium"}
-            </Button>
-          </CardFooter>
-        </Card>
+      <div className="grid gap-5 md:grid-cols-2">
+        {[
+          {
+            name: "Basic",
+            plan: SubscriptionPlan.BASIC,
+            price: "₦50,000",
+            copy: "Manage your business profile, catalogue and enquiries.",
+          },
+          {
+            name: "Premium",
+            plan: SubscriptionPlan.PREMIUM,
+            price: "₦120,000",
+            copy: "Planned tier. Custom domains, team access and advanced analytics are not yet released.",
+          },
+        ].map((item) => (
+          <Card key={item.plan}>
+            <CardHeader>
+              <CardTitle>{item.name}</CardTitle>
+              <CardDescription>{item.copy}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-3xl font-bold">
+                {item.price}
+                <span className="text-sm font-normal text-muted-foreground">
+                  {" "}
+                  / year
+                </span>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Proposed annual price. Test checkout does not make unreleased
+                features available.
+              </p>
+              <Button
+                className="w-full"
+                variant={
+                  item.plan === SubscriptionPlan.BASIC ? "default" : "outline"
+                }
+                disabled={
+                  busy ||
+                  verifying ||
+                  !billing ||
+                  Boolean(statusError) ||
+                  billing.linked ||
+                  item.plan === SubscriptionPlan.PREMIUM ||
+                  (billing.status === "ACTIVE" && billing.plan !== item.plan)
+                }
+                onClick={() => void checkout(item.plan)}
+              >
+                {item.plan === SubscriptionPlan.PREMIUM
+                  ? "Not available for purchase"
+                  : busy
+                    ? "Opening checkout…"
+                    : billing?.linked
+                      ? "Recurring subscription linked"
+                      : "Open test checkout"}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );
@@ -287,8 +338,8 @@ function BillingPageContent() {
 
 export default function BillingPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center">Loading Billing Configuration...</div>}>
-      <BillingPageContent />
+    <Suspense fallback={<p role="status">Loading billing…</p>}>
+      <BillingContent />
     </Suspense>
   );
 }

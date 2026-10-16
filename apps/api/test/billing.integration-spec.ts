@@ -13,9 +13,11 @@ import { BusinessModule } from '../src/modules/business/business.module';
 import { SubscriptionModule } from '../src/modules/subscription/subscription.module';
 import { SubscriptionRepository } from '../src/modules/subscription/subscription.repository';
 import { SubscriptionService } from '../src/modules/subscription/subscription.service';
+import { BillingLifecycleService } from '../src/modules/subscription/billing-lifecycle.service';
 import {
   PaystackService,
   PaystackCharge,
+  PaystackSubscription,
 } from '../src/modules/subscription/paystack.service';
 import { JwtAuthGuard } from '../src/modules/auth/guards/jwt-auth.guard';
 import { OriginGuard } from '../src/common/guards/origin.guard';
@@ -38,6 +40,91 @@ describe('Billing on isolated PostgreSQL (only provider transport mocked)', () =
   const origin = 'http://localhost:3000';
   let transaction = 1000;
   const charges = new Map<string, PaystackCharge>();
+  const agreements = new Map<string, PaystackSubscription>();
+  let cancel: jest.SpyInstance;
+  async function sendEvent(event: string, data: Record<string, unknown>) {
+    const raw = JSON.stringify({ event, data });
+    await request(app.getHttpServer())
+      .post('/api/v1/subscriptions/webhook/paystack')
+      .set('Content-Type', 'application/json')
+      .set(
+        'x-paystack-signature',
+        createHmac('sha512', secret).update(raw).digest('hex'),
+      )
+      .send(raw)
+      .expect(200);
+    return createHash('sha256').update(raw).digest('hex');
+  }
+  async function agreement() {
+    const initial = await purchase();
+    await service.verifyPayment(ownerId, initial.reference);
+    const start = new Date(initial.paid_at),
+      end = new Date(start);
+    end.setUTCFullYear(end.getUTCFullYear() + 1);
+    const data: PaystackSubscription = {
+      subscription_code: 'SUB_' + randomUUID().replaceAll('-', ''),
+      domain: 'test',
+      status: 'active',
+      amount: 5000000,
+      updatedAt: new Date().toISOString(),
+      customer: { email, customer_code: 'CUS_test' },
+      email_token: 'transient-token',
+      plan: {
+        plan_code: 'PLN_test',
+        amount: 5000000,
+        currency: 'NGN',
+        interval: 'annually',
+      },
+      most_recent_invoice: {
+        invoice_code: 'INV_' + transaction,
+        transaction: initial.id,
+        paid: true,
+        amount: 5000000,
+        period_start: start.toISOString(),
+        period_end: end.toISOString(),
+      },
+    };
+    agreements.set(data.subscription_code, data);
+    await sendEvent('subscription.create', {
+      subscription_code: data.subscription_code,
+    });
+    await service.recoverPendingEvents();
+    expect(
+      (await prisma.subscription.findUniqueOrThrow({ where: { id: subId } }))
+        .paystackSubscriptionId,
+    ).toBe(data.subscription_code);
+    return data;
+  }
+  function renewal(data: PaystackSubscription, start = new Date()) {
+    const end = new Date(start);
+    end.setUTCFullYear(end.getUTCFullYear() + 1);
+    const charge: PaystackCharge = {
+      id: ++transaction,
+      reference: 'renewal-' + randomUUID(),
+      status: 'success',
+      amount: 5000000,
+      currency: 'NGN',
+      paid_at: start.toISOString(),
+      metadata: null,
+      customer: { email, customer_code: 'CUS_test' },
+    };
+    charges.set(charge.reference, charge);
+    const invoice = {
+      invoice_code: 'INV_' + transaction,
+      amount: charge.amount,
+      period_start: start.toISOString(),
+      period_end: end.toISOString(),
+      paid: true,
+      subscription: { subscription_code: data.subscription_code },
+      customer: charge.customer,
+      transaction: {
+        reference: charge.reference,
+        amount: charge.amount,
+        currency: charge.currency,
+      },
+    };
+    return { charge, invoice, end };
+  }
   async function purchase() {
     const reference = 'nexora-' + randomUUID();
     await repo.createPayment({
@@ -128,6 +215,25 @@ describe('Billing on isolated PostgreSQL (only provider transport mocked)', () =
         if (!data) throw new Error('Unknown provider transaction');
         return { data };
       });
+    jest
+      .spyOn(provider, 'fetchSubscription')
+      .mockImplementation(async (code) => {
+        const data = agreements.get(code);
+        if (!data) throw new Error('Provider subscription unavailable');
+        return { data: structuredClone(data) };
+      });
+    jest.spyOn(provider, 'fetchTransaction').mockImplementation(async (id) => {
+      const data = [...charges.values()].find((c) => String(c.id) === id);
+      if (!data) throw new Error('Provider transaction unavailable');
+      return { data };
+    });
+    cancel = jest
+      .spyOn(provider, 'cancelSubscription')
+      .mockImplementation(async (code) => {
+        const data = agreements.get(code)!;
+        data.status = 'non-renewing';
+        data.updatedAt = new Date(Date.now() + 1000).toISOString();
+      });
   });
   beforeEach(async () => {
     // Only this explicitly isolated disposable database is ever cleaned.
@@ -152,9 +258,283 @@ describe('Billing on isolated PostgreSQL (only provider transport mocked)', () =
       await prisma.subscription.findUniqueOrThrow({ where: { businessId } })
     ).id;
     verify.mockClear();
+    cancel.mockClear();
   });
   afterAll(async () => {
     if (app) await app.close();
+  });
+
+  it('links subscription codes by exact original transaction, without extending the initial invoice', async () => {
+    const data = await agreement();
+    const sub = await prisma.subscription.findUniqueOrThrow({
+      where: { id: subId },
+    });
+    const payments = await prisma.payment.findMany({
+      where: { subscriptionId: subId },
+    });
+    expect(payments).toHaveLength(1);
+    expect(sub.billingAnchorPaymentId).toBe(payments[0].id);
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/subscriptions/' + businessId + '/status')
+      .set('Cookie', cookies)
+      .expect(200);
+    expect(res.body.data.linked).toBe(true);
+    expect(res.body.data.renewalStatus).toBe('active');
+    expect(JSON.stringify(res.body)).not.toContain('transient-token');
+    expect(data.subscription_code).not.toMatch(/^AUTH_/);
+  });
+  it('renews an expired paid term once despite concurrent duplicate invoices', async () => {
+    const data = await agreement();
+    const r = renewal(data);
+    await prisma.subscription.update({
+      where: { id: subId },
+      data: {
+        currentPeriodEnd: new Date(Date.now() - 1000),
+        status: 'EXPIRED',
+      },
+    });
+    const id = await sendEvent('invoice.update', r.invoice);
+    const other = await sendEvent('invoice.update', {
+      ...r.invoice,
+      unused: 'different delivery',
+    });
+    const events = await prisma.paymentEvent.findMany({
+      where: { id: { in: [id, other] } },
+    });
+    await Promise.all(
+      events.map((event) =>
+        app.get(BillingLifecycleService).process(event, async (ref) => {
+          await service.verifyPayment(ownerId, ref);
+        }),
+      ),
+    );
+    await service.recoverPendingEvents();
+    await service.verifyPayment(ownerId, r.charge.reference);
+    const sub = await prisma.subscription.findUniqueOrThrow({
+      where: { id: subId },
+    });
+    expect(sub.currentPeriodEnd).toEqual(r.end);
+    expect(sub.status).toBe('ACTIVE');
+    expect(
+      await prisma.payment.count({
+        where: { providerInvoiceCode: r.invoice.invoice_code },
+      }),
+    ).toBe(1);
+    expect(
+      (await prisma.paymentEvent.findUniqueOrThrow({ where: { id } })).status,
+    ).toBe('DONE');
+  });
+  it('does not truncate a newer entitlement when an older paid invoice arrives', async () => {
+    const data = await agreement();
+    const r = renewal(data);
+    const future = new Date(r.end);
+    future.setUTCFullYear(future.getUTCFullYear() + 1);
+    await prisma.subscription.update({
+      where: { id: subId },
+      data: { currentPeriodEnd: future },
+    });
+    await sendEvent('invoice.update', r.invoice);
+    await service.recoverPendingEvents();
+    expect(
+      (await prisma.subscription.findUniqueOrThrow({ where: { id: subId } }))
+        .currentPeriodEnd,
+    ).toEqual(future);
+  });
+  it('preserves paid access on cancellation and confirms the durable intent with a fresh read', async () => {
+    await agreement();
+    const before = await prisma.subscription.findUniqueOrThrow({
+      where: { id: subId },
+    });
+    await Promise.all(
+      [1, 2].map(() =>
+        request(app.getHttpServer())
+          .post('/api/v1/subscriptions/' + businessId + '/cancel-renewal')
+          .set('Cookie', cookies)
+          .set('Origin', origin)
+          .expect(202),
+      ),
+    );
+    await service.recoverPendingEvents();
+    const pending = await prisma.paymentEvent.findFirstOrThrow({
+      where: {
+        event: 'subscription.cancel',
+        providerObjectId: before.paystackSubscriptionId,
+      },
+    });
+    expect(pending.status).toBe('PENDING');
+    expect(cancel).toHaveBeenCalledTimes(1);
+    await prisma.paymentEvent.update({
+      where: { id: pending.id },
+      data: { nextAttemptAt: new Date(0) },
+    });
+    await service.recoverPendingEvents();
+    const after = await prisma.subscription.findUniqueOrThrow({
+      where: { id: subId },
+    });
+    expect(after.renewalStatus).toBe('non-renewing');
+    expect(after.status).toBe('ACTIVE');
+    expect(after.currentPeriodEnd).toEqual(before.currentPeriodEnd);
+    expect(
+      (
+        await prisma.paymentEvent.findUniqueOrThrow({
+          where: { id: pending.id },
+        })
+      ).status,
+    ).toBe('DONE');
+    expect(
+      await prisma.auditLog.count({
+        where: { entityId: subId, action: 'SUBSCRIPTION_CANCEL_REQUESTED' },
+      }),
+    ).toBe(1);
+  });
+  it('uses current provider status instead of an old cancellation event', async () => {
+    const data = await agreement();
+    await sendEvent('subscription.disable', {
+      subscription_code: data.subscription_code,
+      status: 'cancelled',
+    });
+    await service.recoverPendingEvents();
+    const sub = await prisma.subscription.findUniqueOrThrow({
+      where: { id: subId },
+    });
+    expect(sub.renewalStatus).toBe('active');
+    expect(sub.status).toBe('ACTIVE');
+  });
+  it('payment failure does not remove time already paid for', async () => {
+    const data = await agreement();
+    data.status = 'attention';
+    data.updatedAt = new Date(Date.now() + 1000).toISOString();
+    const before = await prisma.subscription.findUniqueOrThrow({
+      where: { id: subId },
+    });
+    await sendEvent('invoice.payment_failed', {
+      subscription: { subscription_code: data.subscription_code },
+    });
+    await service.recoverPendingEvents();
+    const sub = await prisma.subscription.findUniqueOrThrow({
+      where: { id: subId },
+    });
+    expect(sub.renewalStatus).toBe('attention');
+    expect(sub.status).toBe('ACTIVE');
+    expect(sub.currentPeriodEnd).toEqual(before.currentPeriodEnd);
+  });
+  it('rejects renewal amount and customer mismatches without granting access', async () => {
+    const data = await agreement();
+    const r = renewal(data);
+    r.charge.amount = 1;
+    const id = await sendEvent('invoice.update', r.invoice);
+    await service.recoverPendingEvents();
+    expect(await repo.findPayment(r.charge.reference)).toBeNull();
+    expect(
+      (await prisma.paymentEvent.findUniqueOrThrow({ where: { id } })).status,
+    ).toBe('PENDING');
+  });
+  it('recovers the latest paid invoice through periodic provider reconciliation', async () => {
+    const data = await agreement();
+    const r = renewal(data);
+    data.most_recent_invoice = {
+      invoice_code: r.invoice.invoice_code,
+      transaction: r.charge.id,
+      amount: r.charge.amount,
+      period_start: r.invoice.period_start,
+      period_end: r.invoice.period_end,
+      paid: true,
+    };
+    await prisma.subscription.update({
+      where: { id: subId },
+      data: {
+        nextProviderSyncAt: new Date(0),
+        currentPeriodEnd: new Date(0),
+        status: 'EXPIRED',
+      },
+    });
+    await service.recoverPendingEvents();
+    expect(
+      (await repo.findPayment(r.charge.reference))!.fulfilledAt,
+    ).not.toBeNull();
+    expect(
+      (await prisma.subscription.findUniqueOrThrow({ where: { id: subId } }))
+        .currentPeriodEnd,
+    ).toEqual(r.end);
+  });
+  it('does not attach a provider subscription using email and plan alone', async () => {
+    const data = await agreement();
+    const code = 'SUB_unproven' + transaction;
+    agreements.set(code, {
+      ...data,
+      subscription_code: code,
+      most_recent_invoice: null,
+    });
+    const id = await sendEvent('subscription.create', {
+      subscription_code: code,
+    });
+    await service.recoverPendingEvents();
+    expect(
+      (await prisma.paymentEvent.findUniqueOrThrow({ where: { id } })).status,
+    ).toBe('PENDING');
+    expect(
+      await prisma.subscription.findUnique({
+        where: { paystackSubscriptionId: code },
+      }),
+    ).toBeNull();
+  });
+
+  it('rejects owner substitution on status and cancellation before touching the provider', async () => {
+    await agreement();
+    const other = await prisma.user.create({
+      data: {
+        email: randomUUID() + '@example.test',
+        passwordHash: 'unused',
+        firstName: 'Other',
+        lastName: 'Owner',
+      },
+    });
+    await prisma.business.update({
+      where: { id: businessId },
+      data: { ownerId: other.id },
+    });
+    await request(app.getHttpServer())
+      .get('/api/v1/subscriptions/' + businessId + '/status')
+      .set('Cookie', cookies)
+      .expect(403);
+    await request(app.getHttpServer())
+      .post('/api/v1/subscriptions/' + businessId + '/cancel-renewal')
+      .set('Cookie', cookies)
+      .set('Origin', origin)
+      .expect(403);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it('does not let a paid renewal reactivate a suspended business', async () => {
+    const data = await agreement();
+    const r = renewal(data);
+    await prisma.subscription.update({
+      where: { id: subId },
+      data: { status: 'SUSPENDED' },
+    });
+    await sendEvent('invoice.update', r.invoice);
+    await service.recoverPendingEvents();
+    expect(
+      (await prisma.subscription.findUniqueOrThrow({ where: { id: subId } }))
+        .status,
+    ).toBe('SUSPENDED');
+    expect(await repo.findPayment(r.charge.reference)).toBeNull();
+  });
+
+  it('ignores a fetched provider snapshot older than the saved renewal state', async () => {
+    const data = await agreement();
+    const stale = structuredClone(data);
+    data.status = 'non-renewing';
+    data.updatedAt = new Date(Date.now() + 1000).toISOString();
+    await sendEvent('subscription.not_renew', {
+      subscription_code: data.subscription_code,
+    });
+    await service.recoverPendingEvents();
+    const linked = await repo.findLinked(data.subscription_code);
+    await repo.linkAndSync(linked!.billingAnchorPayment!, stale);
+    expect((await repo.findLinked(data.subscription_code))!.renewalStatus).toBe(
+      'non-renewing',
+    );
   });
 
   it('persists the immutable purchase and recovery work before checkout opens', async () => {

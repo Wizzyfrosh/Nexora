@@ -130,6 +130,12 @@ model Subscription {
   currentPeriodEnd       DateTime?
   paystackSubscriptionId String?            @unique
   paystackCustomerId     String?
+  billingAnchorPaymentId String? @unique
+  billingAnchorPayment Payment? @relation("BillingAnchor", fields: [billingAnchorPaymentId], references: [id], onDelete: SetNull)
+  renewalStatus          String @default("UNLINKED")
+  providerStatusUpdatedAt DateTime?
+  nextProviderSyncAt     DateTime?
+  cancelRequestedAt      DateTime?
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
   deletedAt              DateTime?
@@ -139,6 +145,7 @@ model Subscription {
   @@index([businessId])
   @@index([status])
   @@index([paystackSubscriptionId])
+  @@index([nextProviderSyncAt])
   @@map("subscriptions")
 }
 
@@ -157,14 +164,19 @@ model Payment {
   providerPlanCode  String?
   providerTransactionId String? @unique
   fulfilledAt       DateTime?
+  providerInvoiceCode String? @unique
+  coverageStart DateTime?
+  coverageEnd DateTime?
   metadata          Json         @default("{}")
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   deletedAt         DateTime?
   subscription      Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  billingAnchorFor Subscription? @relation("BillingAnchor")
 
   @@index([subscriptionId])
   @@index([paystackReference])
+  @@unique([subscriptionId, coverageStart])
   @@map("payments")
 }
 
@@ -173,6 +185,7 @@ model PaymentEvent {
   event         String
   reference     String?
   providerObjectId String?
+  billingData Json @default("{}")
   status        String   @default("PENDING")
   attempts      Int      @default(0)
   nextAttemptAt DateTime @default(now())

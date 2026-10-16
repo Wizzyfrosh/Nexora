@@ -3,8 +3,12 @@
 // Typed methods for subscription and payment endpoints
 // ============================================================
 
-import { SubscriptionPlan } from '@nexora/shared-types';
-import { apiFetch } from './client';
+import {
+  SubscriptionPlan,
+  BillingStatus,
+  CancelRenewalResult,
+} from "@nexora/shared-types";
+import { apiFetch } from "./client";
 
 export interface InitiateSubscriptionResponse {
   authorizationUrl: string;
@@ -17,24 +21,40 @@ export interface VerifyPaymentResponse {
 }
 
 export class SubscriptionService {
+  static status(businessId: string): Promise<BillingStatus> {
+    return apiFetch(`/subscriptions/${businessId}/status`);
+  }
+
+  static cancelRenewal(businessId: string): Promise<CancelRenewalResult> {
+    return apiFetch(`/subscriptions/${businessId}/cancel-renewal`, {
+      method: "POST",
+    });
+  }
   /**
    * Initiate a subscription checkout session on Paystack.
    */
   static async initiateSubscription(
     businessId: string,
     plan: SubscriptionPlan,
-    callbackUrl: string
+    callbackUrl: string,
   ): Promise<InitiateSubscriptionResponse> {
-    return apiFetch<InitiateSubscriptionResponse>(`/subscriptions/${businessId}/initiate`, {
-      method: 'POST',
-      body: JSON.stringify({ plan, callbackUrl }),
-    });
+    return apiFetch<InitiateSubscriptionResponse>(
+      `/subscriptions/${businessId}/initiate`,
+      {
+        method: "POST",
+        body: JSON.stringify({ plan, callbackUrl }),
+      },
+    );
   }
 
   /**
    * Verify a Paystack payment by transaction reference.
    */
-  static async verifyPayment(reference: string): Promise<VerifyPaymentResponse> {
-    return apiFetch<VerifyPaymentResponse>(`/subscriptions/verify/${reference}`);
+  static async verifyPayment(
+    reference: string,
+  ): Promise<VerifyPaymentResponse> {
+    return apiFetch<VerifyPaymentResponse>(
+      `/subscriptions/verify/${encodeURIComponent(reference)}`,
+    );
   }
 }

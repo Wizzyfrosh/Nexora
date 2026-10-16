@@ -27,6 +27,8 @@ Implemented raw signatures, durable snapshot/inbox/reconciliation, owner-only ve
 
 ## M3 — Identity completion and media
 
+Before live M2 activation, finish the remaining policy/provider/operator checks in RECURRING_BILLING.md. Recurring invoice processing and owner cancellation are now implemented in the test-gated follow-up; this does not enable live billing.
+
 Deliver verification/reset emails, build token screens, hash/rotate tokens safely and validate cross-origin deployment.
 Implement signed Cloudinary uploads, ownership/size/type limits, cleanup and optional moderation.
 Exit: fresh owner verifies/resets and uploads an image without exposing secrets; negative upload/auth tests pass.

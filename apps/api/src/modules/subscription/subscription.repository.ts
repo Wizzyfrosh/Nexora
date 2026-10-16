@@ -4,8 +4,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { Prisma, SubscriptionPlan } from '@prisma/client';
-import { PaystackCharge } from './paystack.service';
+import { Prisma, SubscriptionPlan, Payment } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
+import { PaystackCharge, PaystackSubscription } from './paystack.service';
+import {
+  InvoiceEvidence,
+  checkProviderSubscription,
+  checkInvoice,
+  requireBilling,
+} from './billing-policy';
 
 @Injectable()
 export class SubscriptionRepository {
@@ -99,6 +106,8 @@ export class SubscriptionRepository {
           paidAt,
           fulfilledAt: new Date(),
           providerTransactionId: String(charge.id),
+          coverageStart: start,
+          coverageEnd: end,
         },
       });
       await tx.subscription.update({
@@ -134,10 +143,11 @@ export class SubscriptionRepository {
     event: string,
     reference: string | null,
     providerObjectId: string | null = null,
+    billingData: Prisma.InputJsonObject = {},
   ) {
     // skipDuplicates is safe under concurrent delivery; upsert read/create can race.
     await this.prisma.paymentEvent.createMany({
-      data: [{ id, event, reference, providerObjectId }],
+      data: [{ id, event, reference, providerObjectId, billingData }],
       skipDuplicates: true,
     });
   }
@@ -178,6 +188,240 @@ export class SubscriptionRepository {
                 Date.now() + Math.min(3600000, 30000 * 2 ** attempts),
               ),
             },
+    });
+  }
+
+  findLinked(code: string) {
+    return this.prisma.subscription.findUnique({
+      where: { paystackSubscriptionId: code },
+      include: { billingAnchorPayment: true },
+    });
+  }
+
+  findPaymentByTransaction(id: string) {
+    return this.prisma.payment.findUnique({
+      where: { providerTransactionId: id },
+    });
+  }
+
+  async linkAndSync(anchor: Payment, provider: PaystackSubscription) {
+    checkProviderSubscription(provider, anchor, provider.subscription_code);
+    return this.prisma.$transaction(async (tx) => {
+      const sub = await tx.subscription.update({
+        where: {
+          id: anchor.subscriptionId,
+          deletedAt: null,
+          business: { deletedAt: null },
+        },
+        data: { updatedAt: new Date() },
+      });
+      const saved = await tx.payment.findUniqueOrThrow({
+        where: { id: anchor.id },
+      });
+      checkProviderSubscription(provider, saved, provider.subscription_code);
+      requireBilling(
+        (!sub.paystackSubscriptionId ||
+          sub.paystackSubscriptionId === provider.subscription_code) &&
+          (!sub.billingAnchorPaymentId ||
+            sub.billingAnchorPaymentId === anchor.id) &&
+          sub.plan === saved.purchasedPlan &&
+          sub.paystackCustomerId === provider.customer.customer_code,
+      );
+      const updated = new Date(provider.updatedAt);
+      if (sub.providerStatusUpdatedAt && sub.providerStatusUpdatedAt > updated)
+        return sub;
+      if (sub.providerStatusUpdatedAt?.getTime() === updated.getTime()) {
+        requireBilling(
+          sub.renewalStatus === provider.status ||
+            sub.renewalStatus === 'CANCEL_REQUESTED',
+        );
+      }
+      return tx.subscription.update({
+        where: { id: sub.id },
+        data: {
+          paystackSubscriptionId: provider.subscription_code,
+          billingAnchorPaymentId: anchor.id,
+          renewalStatus:
+            sub.cancelRequestedAt && provider.status === 'active'
+              ? 'CANCEL_REQUESTED'
+              : provider.status,
+          providerStatusUpdatedAt: updated,
+          cancelRequestedAt: [
+            'non-renewing',
+            'cancelled',
+            'completed',
+          ].includes(provider.status)
+            ? null
+            : sub.cancelRequestedAt,
+          nextProviderSyncAt: new Date(Date.now() + 15 * 60000),
+        },
+      });
+    });
+  }
+
+  async fulfillInvoice(
+    anchor: Payment,
+    charge: PaystackCharge,
+    invoice: InvoiceEvidence,
+    customerCode: string,
+  ) {
+    const dates = checkInvoice(invoice, charge, anchor, customerCode);
+    return this.prisma.$transaction(async (tx) => {
+      const sub = await tx.subscription.update({
+        where: {
+          id: anchor.subscriptionId,
+          deletedAt: null,
+          business: { deletedAt: null },
+        },
+        data: { updatedAt: new Date() },
+      });
+      requireBilling(
+        sub.billingAnchorPaymentId === anchor.id &&
+          sub.paystackSubscriptionId === invoice.subscriptionCode &&
+          sub.paystackCustomerId === customerCode &&
+          sub.status !== 'SUSPENDED' &&
+          sub.plan === anchor.purchasedPlan &&
+          (!charge.metadata?.businessId ||
+            charge.metadata.businessId === sub.businessId) &&
+          (!charge.metadata?.planName ||
+            charge.metadata.planName === anchor.purchasedPlan),
+      );
+      const existing = await tx.payment.findUnique({
+        where: { paystackReference: charge.reference },
+      });
+      if (existing) {
+        requireBilling(
+          existing.subscriptionId === sub.id &&
+            existing.fulfilledAt &&
+            existing.providerTransactionId === String(charge.id),
+        );
+        requireBilling(
+          !existing.providerInvoiceCode ||
+            existing.providerInvoiceCode === invoice.invoiceCode,
+        );
+        if (!existing.providerInvoiceCode)
+          await tx.payment.update({
+            where: { id: existing.id },
+            data: { providerInvoiceCode: invoice.invoiceCode },
+          });
+        return; // Includes the initial invoice: never grant the first payment twice.
+      }
+      await tx.payment.create({
+        data: {
+          subscriptionId: sub.id,
+          paystackReference: charge.reference,
+          paystackStatus: 'SUCCESS',
+          amountNgn: anchor.amountNgn,
+          expectedAmountKobo: anchor.expectedAmountKobo,
+          currency: anchor.currency,
+          expectedEmail: anchor.expectedEmail,
+          purchasedPlan: anchor.purchasedPlan,
+          billingCycle: anchor.billingCycle,
+          providerPlanCode: anchor.providerPlanCode,
+          providerTransactionId: String(charge.id),
+          providerInvoiceCode: invoice.invoiceCode,
+          paidAt: dates.paid,
+          fulfilledAt: new Date(),
+          coverageStart: dates.start,
+          coverageEnd: dates.end,
+        },
+      });
+      // Absolute invoice periods make old delivery/order irrelevant; never append a year on replay.
+      if (!sub.currentPeriodEnd || dates.end > sub.currentPeriodEnd) {
+        await tx.subscription.update({
+          where: { id: sub.id },
+          data: {
+            status: dates.end > new Date() ? 'ACTIVE' : 'EXPIRED',
+            currentPeriodStart: dates.start,
+            currentPeriodEnd: dates.end,
+          },
+        });
+      }
+    });
+  }
+
+  async enqueueProviderSyncs(now: Date) {
+    const due = await this.prisma.subscription.findMany({
+      where: {
+        deletedAt: null,
+        paystackSubscriptionId: { not: null },
+        nextProviderSyncAt: { lte: now },
+      },
+      take: 10,
+      orderBy: { nextProviderSyncAt: 'asc' },
+    });
+    for (const sub of due)
+      await this.prisma.$transaction(async (tx) => {
+        const claim = await tx.subscription.updateMany({
+          where: { id: sub.id, nextProviderSyncAt: { lte: now } },
+          data: { nextProviderSyncAt: new Date(now.getTime() + 15 * 60000) },
+        });
+        if (claim.count)
+          await tx.paymentEvent.create({
+            data: {
+              id: 'sync:' + randomUUID(),
+              event: 'subscription.sync',
+              providerObjectId: sub.paystackSubscriptionId,
+            },
+          });
+      });
+  }
+
+  async requestCancellation(userId: string, businessId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const sub = await tx.subscription.findFirst({
+        where: {
+          businessId,
+          deletedAt: null,
+          business: { ownerId: userId, deletedAt: null },
+        },
+      });
+      if (!sub) throw new NotFoundException('Subscription not found');
+      if (!sub.paystackSubscriptionId || !sub.billingAnchorPaymentId)
+        throw new BadRequestException('Subscription mapping requires review');
+      const locked = await tx.subscription.update({
+        where: {
+          id: sub.id,
+          deletedAt: null,
+          business: { ownerId: userId, deletedAt: null },
+        },
+        data: { updatedAt: new Date() },
+      });
+      if (locked.cancelRequestedAt) {
+        const event = await tx.paymentEvent.findFirst({
+          where: {
+            event: 'subscription.cancel',
+            providerObjectId: locked.paystackSubscriptionId,
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        requireBilling(event);
+        return { status: event.status };
+      }
+      const id = 'cancel:' + randomUUID();
+      await tx.paymentEvent.create({
+        data: {
+          id,
+          event: 'subscription.cancel',
+          providerObjectId: sub.paystackSubscriptionId,
+        },
+      });
+      await tx.subscription.update({
+        where: { id: sub.id },
+        data: {
+          cancelRequestedAt: new Date(),
+          renewalStatus: 'CANCEL_REQUESTED',
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId,
+          action: 'SUBSCRIPTION_CANCEL_REQUESTED',
+          entity: 'Subscription',
+          entityId: sub.id,
+        },
+      });
+      return { status: 'PENDING' };
     });
   }
 }
