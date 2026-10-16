@@ -10,12 +10,14 @@ import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { AuthRepository } from '../auth.repository';
 import { JwtPayload } from '../auth.service';
+import { AccountSecurityRepository } from '../account-security.repository';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
     private readonly configService: ConfigService,
     private readonly authRepo: AuthRepository,
+    private readonly security: AccountSecurityRepository,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
@@ -37,7 +39,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   async validate(payload: JwtPayload) {
     const user = await this.authRepo.findUserById(payload.sub);
 
-    if (!user) {
+    if (
+      !user ||
+      !payload.sid ||
+      !(await this.security.isSessionActive(user.id, payload.sid))
+    ) {
       throw new UnauthorizedException('User not found');
     }
 

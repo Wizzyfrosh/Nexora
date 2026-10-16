@@ -22,6 +22,7 @@ model User {
   auditLogs     AuditLog[]
   businesses    Business[]
   refreshTokens RefreshToken[]
+  accountMails AccountMail[]
 
   @@index([email])
   @@index([role])
@@ -36,12 +37,14 @@ model RefreshToken {
   ipAddress String?
   expiresAt DateTime
   revokedAt DateTime?
+  familyId String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])
+  @@index([familyId, revokedAt, expiresAt])
   @@map("refresh_tokens")
 }
 
@@ -55,6 +58,24 @@ model EmailVerificationToken {
   @@index([token])
   @@index([email])
   @@map("email_verification_tokens")
+}
+
+model AccountMail {
+  id String @id @default(uuid())
+  userId String
+  purpose String
+  tokenHash String
+  encryptedToken String
+  status String @default("PENDING")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([userId])
+  @@map("account_mails")
 }
 
 model PasswordResetToken {

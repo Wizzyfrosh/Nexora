@@ -5,7 +5,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { UserRole } from '@prisma/client';
+import { UserRole, Prisma } from '@prisma/client';
 
 @Injectable()
 export class AuthRepository {
@@ -25,6 +25,10 @@ export class AuthRepository {
               select: {
                 plan: true,
                 status: true,
+                trialStartDate: true,
+                trialEndDate: true,
+                currentPeriodStart: true,
+                currentPeriodEnd: true,
               },
             },
           },
@@ -47,6 +51,10 @@ export class AuthRepository {
               select: {
                 plan: true,
                 status: true,
+                trialStartDate: true,
+                trialEndDate: true,
+                currentPeriodStart: true,
+                currentPeriodEnd: true,
               },
             },
           },
@@ -87,82 +95,6 @@ export class AuthRepository {
     });
   }
 
-  // ---- Refresh Tokens ----
-
-  async createRefreshToken(data: {
-    token: string;
-    userId: string;
-    userAgent?: string;
-    ipAddress?: string;
-    expiresAt: Date;
-  }) {
-    return this.prisma.refreshToken.create({ data });
-  }
-
-  async findRefreshToken(token: string) {
-    return this.prisma.refreshToken.findUnique({
-      where: { token },
-      include: { user: true },
-    });
-  }
-
-  async revokeRefreshToken(token: string) {
-    return this.prisma.refreshToken.update({
-      where: { token },
-      data: { revokedAt: new Date() },
-    });
-  }
-
-  async revokeAllUserRefreshTokens(userId: string) {
-    return this.prisma.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
-  }
-
-  // ---- Email Verification Tokens ----
-
-  async createEmailVerificationToken(data: {
-    token: string;
-    email: string;
-    expiresAt: Date;
-  }) {
-    return this.prisma.emailVerificationToken.create({ data });
-  }
-
-  async findEmailVerificationToken(token: string) {
-    return this.prisma.emailVerificationToken.findUnique({
-      where: { token },
-    });
-  }
-
-  async deleteEmailVerificationToken(id: string) {
-    return this.prisma.emailVerificationToken.delete({ where: { id } });
-  }
-
-  // ---- Password Reset Tokens ----
-
-  async createPasswordResetToken(data: {
-    token: string;
-    email: string;
-    expiresAt: Date;
-  }) {
-    return this.prisma.passwordResetToken.create({ data });
-  }
-
-  async findPasswordResetToken(token: string) {
-    return this.prisma.passwordResetToken.findUnique({
-      where: { token },
-    });
-  }
-
-  async markPasswordResetTokenUsed(id: string) {
-    return this.prisma.passwordResetToken.update({
-      where: { id },
-      data: { usedAt: new Date() },
-    });
-  }
-
   // ---- Audit Logging ----
 
   async createAuditLog(data: {
@@ -170,15 +102,15 @@ export class AuthRepository {
     action: string;
     entity: string;
     entityId?: string;
-    metadata?: Record<string, unknown>;
+    metadata?: Prisma.InputJsonObject;
     ipAddress?: string;
     userAgent?: string;
   }) {
-    return this.prisma.auditLog.create({ 
+    return this.prisma.auditLog.create({
       data: {
         ...data,
-        metadata: data.metadata as any
-      } 
+        metadata: data.metadata,
+      },
     });
   }
 }

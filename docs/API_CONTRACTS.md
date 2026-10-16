@@ -36,6 +36,8 @@ This inventory identifies code, not verified production endpoints. Public tenant
 
 ## New/changed API requirements
 
+Account security: POST /auth/resend-verification uses the current owner identity and returns a shared AccountMailResponse (QUEUED, UNCHANGED, UNAVAILABLE or ALREADY_VERIFIED), never a raw token. Forgot-password stays generic. Reset/verify links use purpose-specific fragment tokens and explicit POST consumption. Refresh accepts an HttpOnly refresh cookie with body {}; malformed/missing/replayed tokens return 401 and clear cookies. Logout can revoke a refresh family after access expiry. Reset clears browser cookies and revokes every existing session. See ACCOUNT_SECURITY.md for mandatory legacy-session cutover.
+
 Recurring billing: GET /subscriptions/:businessId/status returns only plan, entitlement status, renewal status, paid end, linked and cancel-requested flags to the owner. POST /subscriptions/:businessId/cancel-renewal is owner/Origin protected, returns HTTP 202 with inbox status and does not claim provider completion. A fresh provider read confirms stopping renewal; paid expiry is preserved. See RECURRING_BILLING.md. No provider email token is exposed.
 
 Billing checkout accepts BASIC/PREMIUM only and a callback URL on the configured frontend origin. Only Paystack test keys can initialize checkout. Verification requires the saved purchase's business owner; foreign/unknown references return 404, unsuccessful/mismatched verification returns 400, provider unavailability returns 503. A successful replay returns recorded success without extending access again. Webhook HTTP 200 means durable receipt, not immediate fulfilment; processing runs from the inbox. See BILLING_ROLLOUT.md.

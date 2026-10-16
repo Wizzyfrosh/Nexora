@@ -14,7 +14,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
+import { AccountSecurityRepository } from './account-security.repository';
+import { AccountMailService } from './account-mail.service';
+import type { AccountMailResponse } from '@nexora/shared-types';
+import { secretToken, tokenHash, validToken } from './account-security';
 import { AuthRepository } from './auth.repository';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
@@ -24,11 +28,14 @@ export interface JwtPayload {
   email: string;
   role: UserRole;
   businessId?: string;
+  sid?: string;
 }
 
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
+  accessMaxAge: number;
+  refreshMaxAge: number;
 }
 
 @Injectable()
@@ -40,6 +47,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly security: AccountSecurityRepository,
+    private readonly mail: AccountMailService,
   ) {}
 
   // ---- SIGNUP ----
@@ -51,7 +60,9 @@ export class AuthService {
     lastName: string;
   }): Promise<{ user: Record<string, unknown>; tokens: AuthTokens }> {
     // Check if user already exists
-    const existingUser = await this.authRepo.findUserByEmail(dto.email);
+    const existingUser = await this.authRepo.findUserByEmail(
+      dto.email.toLowerCase().trim(),
+    );
     if (existingUser) {
       throw new ConflictException('A user with this email already exists');
     }
@@ -148,23 +159,25 @@ export class AuthService {
       return { user, business };
     });
 
-    // Generate email verification token
-    const verificationToken = uuidv4();
-    await this.authRepo.createEmailVerificationToken({
-      token: verificationToken,
-      email: result.user.email,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-    });
+    // Queue a link without delaying signup on the email provider.
+    try {
+      await this.mail.enqueue(result.user.id, 'VERIFY');
+    } catch {
+      this.logger.warn(
+        'Verification mail could not be queued; owner can resend',
+      );
+    }
 
     // Generate auth tokens
-    const tokens = await this.generateTokens({
-      sub: result.user.id,
-      email: result.user.email,
-      role: result.user.role,
-      businessId: result.business.id,
-    });
-
-    this.logger.log(`New user registered: ${result.user.email}`);
+    const tokens = await this.generateTokens(
+      {
+        sub: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        businessId: result.business.id,
+      },
+      result.user.passwordHash,
+    );
 
     return {
       user: {
@@ -174,6 +187,7 @@ export class AuthService {
         lastName: result.user.lastName,
         role: result.user.role,
         emailVerified: result.user.emailVerified,
+        businesses: [result.business],
         business: {
           id: result.business.id,
           name: result.business.name,
@@ -193,14 +207,19 @@ export class AuthService {
     userAgent?: string;
     ipAddress?: string;
   }): Promise<{ user: Record<string, unknown>; tokens: AuthTokens }> {
-    const user = await this.authRepo.findUserByEmail(dto.email.toLowerCase().trim());
+    const user = await this.authRepo.findUserByEmail(
+      dto.email.toLowerCase().trim(),
+    );
 
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
     // Verify password
-    const isPasswordValid = await argon2.verify(user.passwordHash, dto.password);
+    const isPasswordValid = await argon2.verify(
+      user.passwordHash,
+      dto.password,
+    );
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid email or password');
     }
@@ -215,8 +234,7 @@ export class AuthService {
         role: user.role,
         businessId: primaryBusiness?.id,
       },
-      dto.userAgent,
-      dto.ipAddress,
+      user.passwordHash,
     );
 
     // Audit log
@@ -228,8 +246,6 @@ export class AuthService {
       ipAddress: dto.ipAddress,
       userAgent: dto.userAgent,
     });
-
-    this.logger.log(`User logged in: ${user.email}`);
 
     return {
       user: {
@@ -246,119 +262,85 @@ export class AuthService {
     };
   }
 
-  // ---- LOGOUT ----
-
-  async logout(refreshToken: string, userId: string): Promise<void> {
-    await this.authRepo.revokeRefreshToken(refreshToken);
-
-    await this.authRepo.createAuditLog({
-      userId,
-      action: 'LOGOUT',
-      entity: 'User',
-      entityId: userId,
-    });
-
-    this.logger.log(`User logged out: ${userId}`);
+  async logout(refreshToken: unknown): Promise<void> {
+    if (validToken(refreshToken, 'rt'))
+      await this.security.revokeFamily(tokenHash(refreshToken));
   }
 
-  // ---- REFRESH TOKEN ----
-
-  async refreshTokens(
-    refreshToken: string,
-  ): Promise<AuthTokens> {
-    const storedToken = await this.authRepo.findRefreshToken(refreshToken);
-
-    if (!storedToken || storedToken.revokedAt || storedToken.expiresAt < new Date()) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
-    }
-
-    // Revoke old token (rotation)
-    await this.authRepo.revokeRefreshToken(refreshToken);
-
-    const user = storedToken.user;
-    const primaryBusiness = await this.prisma.business.findFirst({
-      where: { ownerId: user.id, deletedAt: null },
+  async refreshTokens(refreshToken: unknown): Promise<AuthTokens> {
+    if (!validToken(refreshToken, 'rt'))
+      throw new UnauthorizedException('Invalid or expired session');
+    const next = secretToken('rt');
+    const rotated = await this.security.rotate(
+      tokenHash(refreshToken),
+      tokenHash(next),
+    );
+    if (!rotated) throw new UnauthorizedException('Invalid or expired session');
+    const business = await this.prisma.business.findFirst({
+      where: { ownerId: rotated.user.id, deletedAt: null },
       select: { id: true },
     });
-
-    // Generate new tokens
-    return this.generateTokens({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      businessId: primaryBusiness?.id,
-    });
+    return this.signTokens(
+      {
+        sub: rotated.user.id,
+        email: rotated.user.email,
+        role: rotated.user.role,
+        businessId: business?.id,
+        sid: rotated.familyId,
+      },
+      next,
+      rotated.expiresAt,
+    );
   }
 
-  // ---- EMAIL VERIFICATION ----
+  async resendVerification(userId: string): Promise<AccountMailResponse> {
+    const user = await this.authRepo.findUserById(userId);
+    if (!user) throw new UnauthorizedException('Session unavailable');
+    if (user.emailVerified) return { delivery: 'ALREADY_VERIFIED' };
+    return this.mail.enqueue(user.id, 'VERIFY');
+  }
 
   async verifyEmail(token: string): Promise<void> {
-    const verificationToken = await this.authRepo.findEmailVerificationToken(token);
-
-    if (!verificationToken || verificationToken.expiresAt < new Date()) {
-      throw new BadRequestException('Invalid or expired verification token');
-    }
-
-    const user = await this.authRepo.findUserByEmail(verificationToken.email);
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
-
-    await this.authRepo.updateUserEmailVerified(user.id);
-    await this.authRepo.deleteEmailVerificationToken(verificationToken.id);
-
-    this.logger.log(`Email verified: ${user.email}`);
+    if (!validToken(token, 'verify'))
+      throw new BadRequestException('Link is invalid, expired or already used');
+    await this.security.consumeAction(tokenHash(token), 'VERIFY');
   }
-
-  // ---- FORGOT PASSWORD ----
 
   async forgotPassword(email: string): Promise<void> {
-    const user = await this.authRepo.findUserByEmail(email.toLowerCase().trim());
-
-    // Always return success to prevent email enumeration
-    if (!user) {
-      return;
+    const user = await this.authRepo.findUserByEmail(
+      email.toLowerCase().trim(),
+    );
+    // No synchronous SMTP call: existence does not change provider/network timing.
+    if (user) {
+      try {
+        await this.mail.enqueue(user.id, 'RESET');
+      } catch {
+        this.logger.warn(
+          'Recovery mail could not be queued; request remains generic',
+        );
+      }
     }
-
-    const resetToken = uuidv4();
-    await this.authRepo.createPasswordResetToken({
-      token: resetToken,
-      email: user.email,
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
-    });
-
-    // TODO: Send email with reset link
-    this.logger.log(`Password reset requested for: ${user.email}`);
   }
 
-  // ---- RESET PASSWORD ----
-
   async resetPassword(token: string, newPassword: string): Promise<void> {
-    const resetToken = await this.authRepo.findPasswordResetToken(token);
-
-    if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
-      throw new BadRequestException('Invalid or expired reset token');
+    if (!validToken(token, 'reset'))
+      throw new BadRequestException('Link is invalid, expired or already used');
+    const hash = tokenHash(token),
+      found = await this.security.findAction(hash, 'RESET');
+    if (
+      !found ||
+      found.expiresAt <= new Date() ||
+      ('usedAt' in found && found.usedAt)
+    ) {
+      throw new BadRequestException('Link is invalid, expired or already used');
     }
-
-    const user = await this.authRepo.findUserByEmail(resetToken.email);
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
-
     const passwordHash = await argon2.hash(newPassword, {
       type: argon2.argon2id,
       memoryCost: 65536,
       timeCost: 3,
       parallelism: 4,
     });
-
-    await this.authRepo.updateUserPassword(user.id, passwordHash);
-    await this.authRepo.markPasswordResetTokenUsed(resetToken.id);
-
-    // Revoke all existing refresh tokens for security
-    await this.authRepo.revokeAllUserRefreshTokens(user.id);
-
-    this.logger.log(`Password reset completed for: ${user.email}`);
+    await this.security.consumeAction(hash, 'RESET', passwordHash);
   }
 
   // ---- GET CURRENT USER ----
@@ -386,27 +368,50 @@ export class AuthService {
 
   private async generateTokens(
     payload: JwtPayload,
-    userAgent?: string,
-    ipAddress?: string,
+    expectedPasswordHash: string,
   ): Promise<AuthTokens> {
+    const refreshToken = secretToken('rt'),
+      familyId = randomUUID();
+    const ttl = Math.min(
+      this.parseExpiration(
+        this.configService.get<string>('jwt.refreshExpiration') || '7d',
+      ),
+      30 * 86400000,
+    );
+    const expiresAt = new Date(Date.now() + ttl);
+    await this.security.createSession(
+      payload.sub,
+      tokenHash(refreshToken),
+      familyId,
+      expiresAt,
+      expectedPasswordHash,
+    );
+    return this.signTokens(
+      { ...payload, sid: familyId },
+      refreshToken,
+      expiresAt,
+    );
+  }
+
+  private signTokens(
+    payload: JwtPayload,
+    refreshToken: string,
+    expiresAt: Date,
+  ): AuthTokens {
+    const refreshMaxAge = Math.max(0, expiresAt.getTime() - Date.now());
+    const accessMaxAge = Math.min(
+      refreshMaxAge,
+      15 * 60000,
+      this.parseExpiration(
+        this.configService.get<string>('jwt.accessExpiration') || '15m',
+      ),
+    );
+    if (accessMaxAge < 1000) throw new UnauthorizedException('Session expired');
     const accessToken = this.jwtService.sign(payload, {
-      secret: this.configService.get('jwt.accessSecret'),
-      expiresIn: this.configService.get('jwt.accessExpiration'),
+      secret: this.configService.get<string>('jwt.accessSecret'),
+      expiresIn: Math.floor(accessMaxAge / 1000),
     });
-
-    const refreshToken = uuidv4();
-    const refreshExpiration = this.configService.get<string>('jwt.refreshExpiration') || '7d';
-    const expiresInMs = this.parseExpiration(refreshExpiration);
-
-    await this.authRepo.createRefreshToken({
-      token: refreshToken,
-      userId: payload.sub,
-      userAgent,
-      ipAddress,
-      expiresAt: new Date(Date.now() + expiresInMs),
-    });
-
-    return { accessToken, refreshToken };
+    return { accessToken, refreshToken, accessMaxAge, refreshMaxAge };
   }
 
   private parseExpiration(expiration: string): number {
@@ -417,11 +422,16 @@ export class AuthService {
     const unit = match[2];
 
     switch (unit) {
-      case 's': return value * 1000;
-      case 'm': return value * 60 * 1000;
-      case 'h': return value * 60 * 60 * 1000;
-      case 'd': return value * 24 * 60 * 60 * 1000;
-      default: return 7 * 24 * 60 * 60 * 1000;
+      case 's':
+        return value * 1000;
+      case 'm':
+        return value * 60 * 1000;
+      case 'h':
+        return value * 60 * 60 * 1000;
+      case 'd':
+        return value * 24 * 60 * 60 * 1000;
+      default:
+        return 7 * 24 * 60 * 60 * 1000;
     }
   }
 
@@ -430,7 +440,7 @@ export class AuthService {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
-    const suffix = Math.random().toString(36).substring(2, 6);
+    const suffix = randomUUID().slice(0, 8);
     return `${base}-${suffix}`;
   }
 }

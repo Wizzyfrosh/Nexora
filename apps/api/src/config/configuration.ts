@@ -88,7 +88,8 @@ export const configuration = () => ({
     port: parseInt(process.env.SMTP_PORT || '587', 10),
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
-    from: process.env.EMAIL_FROM || 'Nexora <noreply@nexora.com>',
+    from: process.env.EMAIL_FROM || '',
+    tokenKey: process.env.EMAIL_TOKEN_KEY || '',
   },
 
   sentry: {
