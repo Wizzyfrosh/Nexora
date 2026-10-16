@@ -326,6 +326,7 @@ describe('Private analytics on isolated PostgreSQL', () => {
     expect(data.processing.pending).toBe(0);
   });
   it('keeps event idempotency tenant-scoped', async () => {
+    // Owner B uses the actual fresh-signup layout, not the edited owner-A fixture.
     await prisma.business.update({
       where: { id: b.id },
       data: { isPublished: true },
