@@ -93,6 +93,7 @@ export interface CreateProductDto {
 }
 
 export interface UpdateProductDto {
+  images?: CreateProductDto['images'];
   name?: string;
   description?: string;
   price?: number;
@@ -127,6 +128,7 @@ export interface CreateServiceDto {
 }
 
 export interface UpdateServiceDto {
+  images?: string[];
   name?: string;
   description?: string;
   price?: number;

@@ -1,4 +1,5 @@
 "use client";
+import { MediaPicker } from "@/components/media-picker";
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/contexts/AuthContext";
@@ -57,7 +58,6 @@ export default function ProductsPage() {
   const [prodAvailability, setProdAvailability] = useState<string>("IN_STOCK");
   const [prodIsFeatured, setProdIsFeatured] = useState(false);
   const [prodImages, setProdImages] = useState<string[]>([]);
-  const [newImageUrl, setNewImageUrl] = useState("");
 
   // Category Form Fields
   const [catName, setCatName] = useState("");
@@ -110,7 +110,11 @@ export default function ProductsPage() {
     setShowProductDialog(true);
   };
 
-  const openEditProductDialog = (product: IProduct) => {
+  const openEditProductDialog = async (summary: IProduct) => {
+    if (!businessId) return;
+    let product: IProduct;
+    try { product = await ProductService.getProduct(businessId, summary.id); }
+    catch { setActionError("Could not load the full product. Please retry."); return; }
     setEditingProduct(product);
     setProdName(product.name);
     setProdDescription(product.description || "");
@@ -125,15 +129,7 @@ export default function ProductsPage() {
   };
 
   // Image helpers
-  const addImage = () => {
-    if (!newImageUrl.trim()) return;
-    setProdImages([...prodImages, newImageUrl.trim()]);
-    setNewImageUrl("");
-  };
 
-  const removeImage = (idx: number) => {
-    setProdImages(prodImages.filter((_, i) => i !== idx));
-  };
 
   // Form submit handlers
   const handleSaveProduct = async (e: React.FormEvent) => {
@@ -168,7 +164,8 @@ export default function ProductsPage() {
           compareAtPrice: prodCompareAtPrice ? parseFloat(prodCompareAtPrice) : undefined,
           categoryId: prodCategoryId || undefined,
           availability: prodAvailability as any,
-          isFeatured: prodIsFeatured
+          isFeatured: prodIsFeatured,
+          images: imagesPayload
         });
       } else {
         // Create product
@@ -516,7 +513,7 @@ export default function ProductsPage() {
       {/* Add / Edit Product Modal */}
       {showProductDialog && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <Card className="w-full max-w-xl glass animate-in zoom-in-95 duration-150 my-8">
+          <Card className="w-full max-w-xl bg-white shadow-xl my-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <CardHeader className="flex flex-row justify-between items-start pb-4 border-b">
               <div>
                 <CardTitle className="text-lg font-bold">
@@ -618,62 +615,7 @@ export default function ProductsPage() {
 
                 <hr className="border-border/60" />
 
-                {/* Multiple Images Support */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Product Gallery Images</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      placeholder="Paste image URL (e.g. https://unsplash.com/...)" 
-                      value={newImageUrl} 
-                      onChange={(e) => setNewImageUrl(e.target.value)} 
-                    />
-                    <Button type="button" variant="outline" size="sm" onClick={addImage}>Add</Button>
-                  </div>
-
-                  {/* Thumbnail Previews */}
-                  <div className="flex gap-2 flex-wrap mt-2 p-2 rounded-lg border bg-card/50 min-h-[60px] items-center">
-                    {prodImages.map((url, idx) => (
-                      <div key={idx} className="w-14 h-14 border rounded-md overflow-hidden relative group bg-secondary flex-shrink-0">
-                        <img src={url} alt={`preview-${idx}`} className="w-full h-full object-cover" />
-                        <button 
-                          type="button"
-                          className="absolute -top-1 -right-1 bg-destructive text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] shadow"
-                          onClick={() => removeImage(idx)}
-                        >
-                          x
-                        </button>
-                      </div>
-                    ))}
-                    {prodImages.length === 0 && (
-                      <span className="text-[10px] text-muted-foreground pl-2">Add image links to showcase this product in the gallery.</span>
-                    )}
-                  </div>
-                  {/* Preset quick links for demo uploader testing */}
-                  <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
-                    <span>Quick presets:</span>
-                    <button 
-                      type="button" 
-                      className="underline hover:text-foreground"
-                      onClick={() => setProdImages([...prodImages, "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400"])}
-                    >
-                      Preset 1
-                    </button>
-                    <button 
-                      type="button" 
-                      className="underline hover:text-foreground"
-                      onClick={() => setProdImages([...prodImages, "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400"])}
-                    >
-                      Preset 2
-                    </button>
-                    <button 
-                      type="button" 
-                      className="underline hover:text-foreground"
-                      onClick={() => setProdImages([...prodImages, "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=400"])}
-                    >
-                      Preset 3
-                    </button>
-                  </div>
-                </div>
+                <MediaPicker value={prodImages} onChange={setProdImages} />
               </CardContent>
               <div className="p-6 pt-0 flex justify-end gap-3 border-t mt-4 pt-4">
                 <Button variant="outline" type="button" onClick={() => setShowProductDialog(false)}>Cancel</Button>

@@ -23,6 +23,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { OriginGuard } from './common/guards/origin.guard';
 import { validateEnvironment } from './config/validate-environment';
+import { MediaModule } from './modules/media/media.module';
 
 @Module({
   controllers: [AppController],
@@ -65,6 +66,7 @@ import { validateEnvironment } from './config/validate-environment';
     ProductModule,
     ServiceModule,
     CrmModule,
+    MediaModule,
   ],
   providers: [
     AppService,

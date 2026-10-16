@@ -472,7 +472,9 @@
   display: none;
 }
 .workspace-content > div:not(.workspace-home) {
-  animation: workspace-in 0.35s ease both;
+  /* These roots contain fixed dialogs. Ancestor translate/opacity animation
+     traps/clips the dialog and fades its backdrop while the page enters. */
+  animation: none;
 }
 .workspace-stat > div,
 .workspace-stat small,

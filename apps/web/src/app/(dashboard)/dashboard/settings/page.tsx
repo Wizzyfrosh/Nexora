@@ -1,4 +1,5 @@
 "use client";
+import { MediaPicker } from "@/components/media-picker";
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -137,8 +138,8 @@ export default function SettingsPage() {
       whatsapp: whatsapp || undefined,
       email: email || undefined,
       address: address || undefined,
-      logoUrl: logoUrl || undefined,
-      bannerUrl: bannerUrl || undefined,
+      logoUrl,
+      bannerUrl,
       workingHours,
       socialLinks,
       isPublished,
@@ -381,83 +382,16 @@ function GeneralTab({
 // ============================================================
 // BRANDING TAB
 // ============================================================
-function BrandingTab({
-  logoUrl, setLogoUrl,
-  bannerUrl, setBannerUrl,
-}: {
+function BrandingTab({ logoUrl, setLogoUrl, bannerUrl, setBannerUrl }: {
   logoUrl: string; setLogoUrl: (v: string) => void;
   bannerUrl: string; setBannerUrl: (v: string) => void;
 }) {
-  return (
-    <div className="space-y-6">
-      <Card className="glass">
-        <CardHeader>
-          <CardTitle className="text-lg">Logo</CardTitle>
-          <CardDescription>Your business logo appears on your site and dashboard. Enter an image URL.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-start gap-6">
-            <div className="w-24 h-24 rounded-xl border-2 border-dashed border-border bg-secondary/30 flex items-center justify-center overflow-hidden flex-shrink-0">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo preview" className="w-full h-full object-cover" />
-              ) : (
-                <ImageIcon className="w-8 h-8 text-muted-foreground/40" />
-              )}
-            </div>
-            <div className="flex-1 space-y-3">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="https://example.com/logo.png"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  className="h-10 flex-1"
-                />
-                {logoUrl && (
-                  <Button variant="ghost" size="icon" onClick={() => setLogoUrl("")} className="flex-shrink-0">
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">Recommended: 512×512px, PNG or SVG.</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="glass">
-        <CardHeader>
-          <CardTitle className="text-lg">Banner Image</CardTitle>
-          <CardDescription>This appears as the hero image at the top of your website.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="w-full h-48 rounded-xl border-2 border-dashed border-border bg-secondary/30 flex items-center justify-center overflow-hidden">
-            {bannerUrl ? (
-              <img src={bannerUrl} alt="Banner preview" className="w-full h-full object-cover" />
-            ) : (
-              <div className="flex flex-col items-center gap-2 text-muted-foreground/40">
-                <ImageIcon className="w-10 h-10" />
-                <span className="text-sm">No banner set</span>
-              </div>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Input
-              placeholder="https://example.com/banner.jpg"
-              value={bannerUrl}
-              onChange={(e) => setBannerUrl(e.target.value)}
-              className="h-10 flex-1"
-            />
-            {bannerUrl && (
-              <Button variant="ghost" size="icon" onClick={() => setBannerUrl("")} className="flex-shrink-0">
-                <X className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">Recommended: 1920×600px, JPG or PNG.</p>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  return <div className="space-y-6">
+    <Card><CardHeader><CardTitle>Business logo</CardTitle><CardDescription>Choose a verified upload owned by your business.</CardDescription></CardHeader>
+      <CardContent><MediaPicker value={logoUrl ? [logoUrl] : []} max={1} onChange={urls => setLogoUrl(urls[0] || "")} /></CardContent></Card>
+    <Card><CardHeader><CardTitle>Banner image</CardTitle><CardDescription>Save your settings to attach or remove the selected image.</CardDescription></CardHeader>
+      <CardContent><MediaPicker value={bannerUrl ? [bannerUrl] : []} max={1} onChange={urls => setBannerUrl(urls[0] || "")} /></CardContent></Card>
+  </div>;
 }
 
 // ============================================================

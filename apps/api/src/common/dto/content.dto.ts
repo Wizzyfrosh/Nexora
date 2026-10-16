@@ -50,6 +50,8 @@ export class CreateProductRequest {
   images?: ProductImageRequest[];
 }
 export class UpdateProductRequest {
+  @IsOptional() @IsArray() @ArrayMaxSize(20) @ValidateNested({ each: true })
+  @Type(() => ProductImageRequest) images?: ProductImageRequest[];
   @IsOptional() @IsString() @Length(1, 160) name?: string;
   @IsOptional() @IsString() @MaxLength(10000) description?: string;
   @IsOptional()
@@ -89,6 +91,8 @@ export class CreateServiceRequest {
   images?: string[];
 }
 export class UpdateServiceRequest {
+  @IsOptional() @IsArray() @ArrayMaxSize(20) @IsUrl(https, { each: true })
+  @MaxLength(2048, { each: true }) images?: string[];
   @IsOptional() @IsString() @Length(1, 160) name?: string;
   @IsOptional() @IsString() @MaxLength(10000) description?: string;
   @IsOptional()
