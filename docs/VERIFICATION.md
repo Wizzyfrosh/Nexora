@@ -1,5 +1,12 @@
 # Verification report — 15 October 2026
 
+## Public website delivery — 16 October 2026
+
+- Local shared/API/web production builds, full API TypeScript check including integration sources, and 169 unit tests across 15 suites pass. Targeted storefront API/web lint passes; the final CI evidence will be recorded after execution. PostgreSQL regression source is included in the existing disposable loopback-only security job; no production database is used.
+- Chromium fixtures on the production Next build pass SSR text/title/canonical metadata, no public owner-session probes, current sitemap output, catalogue paging, unpublish-to-unavailable behaviour, escaped script text, contact failure/retry/success, private noindex preview with disabled enquiries, section save, dedicated publish/unpublish and a profile payload without isPublished. Desktop 1440px and mobile 390px screenshots were inspected; mobile has no horizontal overflow. Fixture imagery/business content is not shipped in production source.
+- Browser verification caught a real Next route-encoding mismatch: page params contained `%40slug` while metadata used `@slug`. Strict one-time handle normalization and eight regression cases now cover this boundary. Targeted checks were rerun after the fix.
+- Browser HTTP is controlled test transport, not proof of actual deployed cookies, provider delivery or a live business journey. Real database boundary evidence comes from the separate PostgreSQL CI suite. No merge/deployment, production migration, SMTP send or real Cloudinary operation was performed. Publishing remains default-off; P0/staging gates remain open in PUBLIC_WEBSITE.md.
+
 ## Secure media — 16 October 2026
 
 - API-mediated signed image upload, sanitization, transactional quota/ownership checks, attachment replacement, deferred cleanup and owner pickers implemented. Final [CI run 38825818799](https://github.com/Wizzyfrosh/Nexora/actions/runs/38825818799) passes both jobs on source a6a13ddbf7b68a69063bd8f9a690d437c6c668e2: 137 unit tests across 14 suites, 75 PostgreSQL integration tests (14 media + 14 account + 29 billing + 18 tenant), all three builds, all five migrations, zero drift, audit gates and production-prune import smoke. Later changes only record evidence/documentation.

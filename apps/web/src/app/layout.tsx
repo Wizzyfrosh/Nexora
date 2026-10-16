@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AuthProvider } from "@/lib/contexts/AuthContext";
+import { AccountScope } from "@/components/account-scope";
 
 export const metadata: Metadata = {
   icons: { icon: "/icon.svg" },
@@ -17,7 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <AuthProvider>{children}</AuthProvider>
+        <AccountScope>{children}</AccountScope>
       </body>
     </html>
   );

@@ -15,6 +15,7 @@ import {
   ParseIntPipe,
   DefaultValuePipe,
   Ip,
+  BadRequestException,
 } from '@nestjs/common';
 import { CrmService } from './crm.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -37,6 +38,7 @@ export class CrmController {
     @Param('businessId') businessId: string,
     @Body() dto: CreateLeadRequest,
   ) {
+    if (dto.website) throw new BadRequestException('Could not accept this message');
     return this.crmService.captureLead(businessId, dto);
   }
 

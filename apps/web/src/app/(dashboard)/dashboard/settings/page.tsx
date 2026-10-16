@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { MediaPicker } from "@/components/media-picker";
 
 import { useState, useEffect } from "react";
@@ -7,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Settings as SettingsIcon,
   User,
@@ -16,15 +16,11 @@ import {
   Share2,
   Globe,
   Save,
-  ExternalLink,
   CheckCircle2,
   Loader2,
-  Image as ImageIcon,
-  X,
-  Copy,
 } from "lucide-react";
 import { useAuth } from "@/lib/contexts/AuthContext";
-import { BusinessService, BusinessProfile } from "@/lib/api/business";
+import { BusinessService } from "@/lib/api/business";
 import { UpdateBusinessDto, DayOfWeek } from "@nexora/shared-types";
 
 // ============================================================
@@ -80,7 +76,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [profile, setProfile] = useState<BusinessProfile | null>(null);
+  const [loadError, setLoadError] = useState("");
+  const [saveError, setSaveError] = useState("");
 
   // Form state
   const [name, setName] = useState("");
@@ -94,16 +91,14 @@ export default function SettingsPage() {
   const [bannerUrl, setBannerUrl] = useState("");
   const [workingHours, setWorkingHours] = useState(DEFAULT_HOURS);
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
-  const [isPublished, setIsPublished] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   // ---- Load profile ----
   useEffect(() => {
     if (!businessId) return;
-    setLoading(true);
+    let cancelled = false;
     BusinessService.getProfile(businessId)
       .then((data) => {
-        setProfile(data);
+        if (cancelled) return;
         setName(data.name || "");
         setSlug(data.slug || "");
         setDescription(data.description || "");
@@ -113,7 +108,6 @@ export default function SettingsPage() {
         setAddress(data.address || "");
         setLogoUrl(data.logoUrl || "");
         setBannerUrl(data.bannerUrl || "");
-        setIsPublished(data.isPublished);
         if (data.workingHours && Array.isArray(data.workingHours) && data.workingHours.length > 0) {
           setWorkingHours(data.workingHours);
         }
@@ -121,15 +115,17 @@ export default function SettingsPage() {
           setSocialLinks(data.socialLinks as Record<string, string>);
         }
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch(() => { if (!cancelled) setLoadError("Business details could not be loaded. Reload to retry; no changes were saved."); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [businessId]);
 
   // ---- Save handler ----
   const handleSave = async () => {
-    if (!businessId) return;
+    if (!businessId || loadError) return;
     setSaving(true);
     setSaved(false);
+    setSaveError("");
 
     const dto: UpdateBusinessDto = {
       name,
@@ -142,28 +138,18 @@ export default function SettingsPage() {
       bannerUrl,
       workingHours,
       socialLinks,
-      isPublished,
     };
 
     try {
-      const updated = await BusinessService.updateProfile(businessId, dto);
-      setProfile(updated);
+      await BusinessService.updateProfile(businessId, dto);
       setSaved(true);
       refreshUser();
       setTimeout(() => setSaved(false), 2500);
-    } catch (err: any) {
-      alert(err.message || "Failed to save changes");
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to save changes");
     } finally {
       setSaving(false);
     }
-  };
-
-  const publicUrl = slug ? `${window.location.origin}/@${slug}` : "";
-
-  const copyPublicUrl = () => {
-    navigator.clipboard.writeText(publicUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   if (loading) {
@@ -174,8 +160,11 @@ export default function SettingsPage() {
     );
   }
 
+  if (loadError) return <div role="alert"><p>{loadError}</p><Button onClick={() => window.location.reload()}>Reload settings</Button></div>;
+
   return (
     <div className="space-y-8">
+      {saveError && <p role="alert" className="text-red-700">{saveError}</p>}
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -279,13 +268,7 @@ export default function SettingsPage() {
                 />
               )}
               {activeTab === "publish" && (
-                <PublishTab
-                  isPublished={isPublished}
-                  setIsPublished={setIsPublished}
-                  publicUrl={publicUrl}
-                  copied={copied}
-                  copyPublicUrl={copyPublicUrl}
-                />
+                <PublishTab />
               )}
             </motion.div>
           </AnimatePresence>
@@ -506,7 +489,7 @@ function SocialLinksTab({
     <Card className="glass">
       <CardHeader>
         <CardTitle className="text-lg">Social Media Links</CardTitle>
-        <CardDescription>Connect your social profiles. These will appear on your public website.</CardDescription>
+        <CardDescription>Store your social profiles. Social-link rendering is not included in this public-site release.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {SOCIAL_PLATFORMS.map((platform) => (
@@ -529,98 +512,6 @@ function SocialLinksTab({
 // ============================================================
 // PUBLISH TAB
 // ============================================================
-function PublishTab({
-  isPublished,
-  setIsPublished,
-  publicUrl,
-  copied,
-  copyPublicUrl,
-}: {
-  isPublished: boolean;
-  setIsPublished: (v: boolean) => void;
-  publicUrl: string;
-  copied: boolean;
-  copyPublicUrl: () => void;
-}) {
-  return (
-    <div className="space-y-6">
-      <Card className="glass overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 blur-[80px] rounded-full -z-10" />
-        <CardHeader>
-          <CardTitle className="text-lg">Website Visibility</CardTitle>
-          <CardDescription>Control whether your website is live and accessible to the public.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-background/50">
-            <div className="flex items-center gap-4">
-              <div className={`w-3 h-3 rounded-full ${isPublished ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/30"}`} />
-              <div>
-                <p className="font-medium text-sm">{isPublished ? "Website is Live" : "Website is Offline"}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {isPublished ? "Your website is publicly accessible." : "Your website is hidden from the public."}
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsPublished(!isPublished)}
-              className={`
-                relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent
-                transition-colors duration-200 ease-in-out
-                ${isPublished ? "bg-emerald-500" : "bg-secondary"}
-              `}
-            >
-              <span
-                className={`
-                  pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0
-                  transition duration-200 ease-in-out
-                  ${isPublished ? "translate-x-5" : "translate-x-0"}
-                `}
-              />
-            </button>
-          </div>
-
-          {isPublished && publicUrl && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-4 rounded-xl border border-primary/20 bg-primary/5"
-            >
-              <p className="text-xs font-medium text-muted-foreground mb-2">Your public website URL</p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 text-sm font-mono text-primary bg-background/50 px-3 py-2 rounded-lg border border-border/50 truncate">
-                  {publicUrl}
-                </code>
-                <Button variant="outline" size="sm" onClick={copyPublicUrl} className="flex-shrink-0">
-                  {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                </Button>
-                <Button variant="outline" size="sm" asChild className="flex-shrink-0">
-                  <a href={publicUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                </Button>
-              </div>
-            </motion.div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="glass border-amber-500/20">
-        <CardContent className="p-6">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-              <Globe className="w-5 h-5 text-amber-500" />
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm mb-1">Remember to save</h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Toggle the switch above and then click <strong>Save Changes</strong> at the top of the page to apply your publish/unpublish action.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+function PublishTab() {
+  return <Card><CardHeader><CardTitle>Website publishing</CardTitle><CardDescription>Preview your site and review publication requirements in My website. Saving this profile does not publish it.</CardDescription></CardHeader><CardContent><Button asChild><Link href="/dashboard/website">Manage website publishing</Link></Button></CardContent></Card>;
 }

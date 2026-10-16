@@ -14,6 +14,7 @@ export class PublicBusinessGuard implements CanActivate {
       select: {
         isPublished: true,
         deletedAt: true,
+        owner: { select: { emailVerified: true, deletedAt: true } },
         subscription: {
           select: {
             status: true,

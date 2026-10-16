@@ -105,6 +105,7 @@ export class UpdateServiceRequest {
   @IsOptional() @IsBoolean() isFeatured?: boolean;
 }
 export class CreateLeadRequest {
+  @IsOptional() @IsString() @MaxLength(200) website?: string;
   @IsString() @Length(1, 160) name!: string;
   @IsOptional() @IsEmail() @MaxLength(254) email?: string;
   @IsOptional() @IsString() @MaxLength(40) phone?: string;

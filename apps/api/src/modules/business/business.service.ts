@@ -46,6 +46,7 @@ export class BusinessService {
   }
 
   async updateBusiness(businessId: string, dto: UpdateBusinessDto) {
+    if (dto.isPublished !== undefined) throw new ForbiddenException('Use the dedicated website publication action');
     assertBusinessUrls(dto);
     const business = await this.businessRepo.findById(businessId);
     if (!business) {

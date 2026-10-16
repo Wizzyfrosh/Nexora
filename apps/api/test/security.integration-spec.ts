@@ -39,6 +39,7 @@ describe('Tenant security on isolated PostgreSQL', () => {
         password: 'SecurityTest123!',
       })
       .expect(201);
+    await prisma.user.updateMany({ where: { businesses: { some: { id: response.body.data.business.id } } }, data: { emailVerified: true } });
     return {
       businessId: response.body.data.business.id,
       slug: response.body.data.business.slug,
