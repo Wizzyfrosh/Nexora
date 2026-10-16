@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { Storefront } from "@nexora/shared-types";
 import { ContactForm } from "./contact-form";
+import { AnalyticsConsent } from "./analytics-consent";
 import "./storefront.css";
 const price = (value: string) =>
   new Intl.NumberFormat("en-NG", {
@@ -213,6 +214,7 @@ export function StorefrontView({
                 {b.whatsapp && c.whatsapp !== false && (
                   <a
                     href={`https://wa.me/${b.whatsapp}`}
+                      data-store-whatsapp
                     target="_blank"
                     rel="noopener noreferrer"
                     className="store-button"
@@ -258,6 +260,7 @@ export function StorefrontView({
           A business website made with <Link href="/">Nexora</Link>.
         </span>
       </footer>
+      {!preview && site.analyticsEnabled && <AnalyticsConsent key={b.id} businessId={b.id} />}
     </div>
   );
 }

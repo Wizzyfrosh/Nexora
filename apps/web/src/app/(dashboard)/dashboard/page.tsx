@@ -227,17 +227,12 @@ export default function DashboardPage() {
             of your growth.
           </h2>
           <p>
-            Traffic analytics and public website delivery are still being
-            completed. We’ll show real results here when tracking is connected.
+            View real enquiries and processed, opt-in website activity. Collection
+            may be off while launch checks are completed.
           </p>
-          <div className="workspace-empty-chart" aria-hidden="true">
-            {[35, 55, 45, 72, 60, 88, 75, 100].map((v, i) => (
-              <i key={i} style={{ height: v }} />
-            ))}
-          </div>
-          <small>Illustration only · no traffic data collected here</small>
-          <Link href="/dashboard/website">
-            Review your website setup <ArrowUpRight size={15} />
+          <small>No unique visitor or conversion-rate claims</small>
+          <Link href="/dashboard/analytics">
+            Open analytics <ArrowUpRight size={15} />
           </Link>
         </section>
       </div>

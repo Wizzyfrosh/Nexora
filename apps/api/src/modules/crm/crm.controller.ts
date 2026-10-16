@@ -1,6 +1,5 @@
 import {
   CreateLeadRequest,
-  TrackClickRequest,
 } from '../../common/dto/content.dto';
 import {
   Controller,
@@ -14,7 +13,6 @@ import {
   UseGuards,
   ParseIntPipe,
   DefaultValuePipe,
-  Ip,
   BadRequestException,
 } from '@nestjs/common';
 import { CrmService } from './crm.service';
@@ -45,19 +43,7 @@ export class CrmController {
   @Public()
   @UseGuards(PublicBusinessGuard)
   @Post('track/whatsapp')
-  @ResponseMessage('Click tracked')
-  async trackWhatsAppClick(
-    @Param('businessId') businessId: string,
-    @Body() data: TrackClickRequest,
-    @Ip() ip: string, // Simple sessionId proxy for unauthenticated storefront users
-  ) {
-    // Note: In real production, pass a proper sessionId from frontend cookies
-    return this.crmService.logWhatsAppClick(
-      businessId,
-      ip || 'unknown',
-      data.source || 'direct',
-    );
-  }
+  trackWhatsAppClick() { return this.crmService.logWhatsAppClick(); }
 
   // ---- Tenant Dashboard Routes ----
 

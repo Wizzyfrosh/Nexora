@@ -44,6 +44,8 @@ Implemented the canonical SSR renderer, bounded public DTO/catalogue paging, fiv
 
 ## M5 — Analytics and operational readiness
 
+First-party pilot slice implements bounded explicit-consent PAGE_VIEW/WHATSAPP_CLICK ingestion, transactional PostgreSQL queue aggregation, 7/30/90-day tenant reports, real retained CRM enquiry counts, private dashboard, bounded retries/review and a standalone retention/worker command. See ANALYTICS.md. Collection defaults off. No production schedule or Sentry/PostHog integration is installed, and existing unrelated cleanup timers remain. This slice does not claim the full M5 exit gate below.
+
 Implement bounded event ingestion, durable queue/worker, tenant aggregates, honest chart states, Sentry and privacy-reviewed PostHog.
 Replace timers with reliable scheduled cleanup without relying on them for authorization.
 Exit: events produce correct counts after worker retry; costs bounded; alerts and backup restore validated.

@@ -1,5 +1,5 @@
 import { assertPagination } from '../../common/security/pagination';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, GoneException } from '@nestjs/common';
 import { CrmRepository } from './crm.repository';
 import { CreateLeadDto } from '@nexora/shared-types';
 
@@ -39,17 +39,5 @@ export class CrmService {
     return this.crmRepo.deleteLead(leadId, businessId);
   }
 
-  async logWhatsAppClick(
-    businessId: string,
-    sessionId: string,
-    pageSource: string,
-  ) {
-    await this.crmRepo.trackAnalyticsEvent(
-      businessId,
-      'WHATSAPP_CLICK',
-      { source: pageSource },
-      sessionId,
-    );
-    return { recorded: true };
-  }
+  logWhatsAppClick(): never { throw new GoneException('Use the consent-based analytics event endpoint'); }
 }

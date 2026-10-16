@@ -99,19 +99,4 @@ export class CrmRepository {
     return { total, unread, thisWeek };
   }
 
-  async trackAnalyticsEvent(
-    businessId: string,
-    eventType: any,
-    metadata: any,
-    sessionId: string,
-  ) {
-    return this.prisma.analyticsEvent.create({
-      data: {
-        businessId,
-        eventType,
-        metadata,
-        sessionId,
-      },
-    });
-  }
 }

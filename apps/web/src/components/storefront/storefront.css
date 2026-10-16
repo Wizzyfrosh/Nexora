@@ -353,3 +353,22 @@
 .store-no-image > div {
   max-width: 800px;
 }
+.store-privacy {
+  max-width: 1100px;
+  margin: 20px auto;
+  padding: 24px 6%;
+  border-top: 1px solid #e8dff0;
+  font-size: 12px;
+  color: #5f536b;
+}
+.store-privacy button {
+  padding: 8px 14px;
+  border: 1px solid #bca8cd;
+  border-radius: 16px;
+  background: white;
+  cursor: pointer;
+  margin: 6px 10px 0 0;
+}
+.store-privacy p {
+  max-width: 750px;
+}

@@ -45,7 +45,7 @@ Payment follow-up: known-purchase verification, raw webhook signatures, durable 
 | P1 | Public renderer rollout | Canonical /@slug SSR, owner editor/preview, validated publication and enquiry workflow are implemented; publishing defaults off. Real-provider staging journey, account/content cutover and operator launch approval remain open. See PUBLIC_WEBSITE.md. |
 | P1 | Identity and uploads | Session rotation, atomic reset/verification and registered media ownership are implemented. Real SMTP/Cloudinary staging checks, deployed cookies, legacy media inventory and operational queue monitoring remain open. |
 | P1 | Runtime integration | Deployed cookie topology, email, provider accounts and production database remain unverified. |
-| P1 | Analytics | Ingestion, aggregation, dashboard and privacy controls remain incomplete. |
+| P1 | Analytics operations | First-party opt-in events, durable PostgreSQL processing, tenant/day reports, owner dashboard and bounded retention are implemented; collection defaults off. Production scheduling, alert delivery, load tests, backup restore and third-party telemetry review remain open. See ANALYTICS.md. |
 | P2 | Domains/staff/admin | DNS verification, granular roles and audited operations remain later milestones. |
 
 ## Important distinction

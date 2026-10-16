@@ -1,5 +1,13 @@
 # Verification report — 15 October 2026
 
+## First-party analytics — 16 October 2026
+
+- Local shared/API/web builds, Prisma client generation, full API TypeScript check and 200 unit tests across 16 suites pass. Targeted analytics API/web lint passes without fixes. PostgreSQL lifecycle/concurrency/retention tests and a compiled-worker CI pass are included; final CI evidence will be recorded after execution. No production database was used.
+- Production Next Chromium fixtures pass opt-in/no-request-before-consent, deny/withdrawal across tabs, DNT/GPC override, event DTO shape, omitted cookies, disabled rollout and preview exclusion. Owner fixtures pass error/retry, zero/populated data, date windows, exact-value table and 390px overflow checks. Desktop/mobile screenshots were reviewed. Controlled HTTP proves browser contracts, not actual database processing or a production scheduler.
+- Review covers effect cleanup, a versioned minimal preference key, per-mounted-page event IDs for effect replay, visible errors/empty/backlog states and UTC dates. No visitor/session profile or third-party SDK is added. The retired legacy WhatsApp route cannot write IP-derived session data. Historical legacy records are not imported/deleted automatically.
+- The restored test Chromium binary was truncated and crashed before startup; re-extracting the existing bundled compressed binary into a new scratch test executable resolved the environment issue. No application dependency or source changed for that recovery.
+- Collection and publishing remain default-off. No merge/deploy, production migration, external monitoring configuration or real provider action was performed. See ANALYTICS.md for worker scheduling, retention targets and remaining operational gates.
+
 ## Public website delivery — 16 October 2026
 
 - Final [CI run 38828937058](https://github.com/Wizzyfrosh/Nexora/actions/runs/38828937058) passes both jobs on source e11349f269717a55a1fb0775ad38dcb45133bd19: 170 unit tests across 15 suites, 101 PostgreSQL integration tests across five suites (26 storefront + 14 media + 14 account + 29 billing + 18 tenant), all three builds, all five preceding migrations, zero schema drift, audit gates and production-prune API import smoke. Subsequent changes only record documentation/evidence. Production audit reports zero findings; the known 25 noncritical development-tree findings remain, not a clean full-tree audit.

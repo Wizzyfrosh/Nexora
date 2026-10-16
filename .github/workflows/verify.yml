@@ -63,3 +63,6 @@ jobs:
       - run: npm exec --workspace api -- prisma migrate deploy --schema prisma/schema.prisma
       - run: npm exec --workspace api -- prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
       - run: npm run test:security --workspace api
+      - run: npm run build --workspace api
+      - name: Compiled analytics worker on disposable PostgreSQL
+        run: npm run analytics:drain --workspace api

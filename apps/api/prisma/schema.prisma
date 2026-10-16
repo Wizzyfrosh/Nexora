@@ -110,6 +110,8 @@ model Business {
   updatedAt    DateTime         @updatedAt
   deletedAt    DateTime?
   analytics    AnalyticsEvent[]
+  observations AnalyticsObservation[]
+  dailyCounts  AnalyticsDaily[]
   owner        User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   categories   Category[]
   leads        Lead[]
@@ -361,6 +363,7 @@ model Lead {
 
   @@index([businessId])
   @@index([isRead])
+  @@index([businessId, createdAt])
   @@map("leads")
 }
 
@@ -406,6 +409,41 @@ model AnalyticsEvent {
   @@index([timestamp])
   @@index([businessId, eventType, timestamp])
   @@map("analytics_events")
+}
+
+// New first-party counters never use legacy sessionId/metadata/IP-bearing rows.
+model AnalyticsObservation {
+  id          String             @id @default(uuid())
+  businessId  String
+  eventId     String
+  eventType   AnalyticsEventType
+  receivedAt  DateTime           @default(now())
+  processedAt DateTime?
+  status      String             @default("PENDING")
+  attempts    Int                @default(0)
+  availableAt DateTime           @default(now())
+  business    Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, eventId])
+  @@index([businessId, receivedAt])
+  @@index([businessId, status])
+  @@index([status, availableAt, receivedAt])
+  @@index([receivedAt])
+  @@map("analytics_observations")
+}
+
+model AnalyticsDaily {
+  id         String             @id @default(uuid())
+  businessId String
+  day        DateTime           @db.Date
+  eventType  AnalyticsEventType
+  count      Int                @default(0)
+  updatedAt  DateTime           @updatedAt
+  business   Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, day, eventType])
+  @@index([day])
+  @@map("analytics_daily")
 }
 
 model AuditLog {

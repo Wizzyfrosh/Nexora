@@ -14,6 +14,7 @@ import {
   CreditCard,
   Palette,
   ArrowUpRight,
+  ChartNoAxesCombined,
 } from "lucide-react";
 import { useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -27,6 +28,7 @@ const links = [
   { name: "Products", href: "/dashboard/products", icon: ShoppingBag },
   { name: "Services", href: "/dashboard/services", icon: Briefcase },
   { name: "Enquiries", href: "/dashboard/subscribers", icon: MessageSquare },
+  { name: "Analytics", href: "/dashboard/analytics", icon: ChartNoAxesCombined },
   { name: "Appearance", href: "/dashboard/appearance", icon: Palette },
   { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },

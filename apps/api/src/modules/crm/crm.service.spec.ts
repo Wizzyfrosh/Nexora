@@ -27,7 +27,6 @@ describe('CrmService', () => {
       markAsRead: jest.fn(),
       deleteLead: jest.fn(),
       getLeadStats: jest.fn(),
-      trackAnalyticsEvent: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -166,33 +165,9 @@ describe('CrmService', () => {
     });
   });
 
-  describe('logWhatsAppClick', () => {
-    it('should track a WhatsApp click event', async () => {
-      const mockEvent = {
-        id: 'event-id',
-        eventType: 'WHATSAPP_CLICK' as const,
-        businessId: 'business-id-123',
-        metadata: {},
-        resourceId: null,
-        sessionId: 'session-abc',
-        createdAt: new Date(),
-        timestamp: new Date(),
-      };
-      crmRepo.trackAnalyticsEvent.mockResolvedValue(mockEvent);
-
-      const result = await service.logWhatsAppClick(
-        'business-id-123',
-        'session-abc',
-        'homepage',
-      );
-
-      expect(crmRepo.trackAnalyticsEvent).toHaveBeenCalledWith(
-        'business-id-123',
-        'WHATSAPP_CLICK',
-        { source: 'homepage' },
-        'session-abc',
-      );
-      expect(result).toEqual({ recorded: true });
+  describe('legacy click tracking', () => {
+    it('rejects the retired session/IP collection path', () => {
+      expect(() => service.logWhatsAppClick()).toThrow('Use the consent-based analytics event endpoint');
     });
   });
 });
