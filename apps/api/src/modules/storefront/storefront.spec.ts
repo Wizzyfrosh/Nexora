@@ -30,10 +30,10 @@ describe('Released storefront contracts', () => {
       transform: true,
       transformOptions: { enableImplicitConversion: true },
     });
-    const result: SectionsRequest = await pipe.transform(
+    const result = (await pipe.transform(
       { sections },
       { type: 'body', metatype: SectionsRequest },
-    );
+    )) as unknown as SectionsRequest;
     expect(result.sections).toEqual(sections);
     expect(Array.isArray(result.sections[0])).toBe(false);
     expect(() => validateSections(result.sections)).not.toThrow();
