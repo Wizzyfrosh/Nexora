@@ -49,6 +49,7 @@ export interface EnvironmentVariables {
 }
 
 export const configuration = () => ({
+  publishingEnabled: process.env.PUBLIC_PUBLISHING_ENABLED === 'true',
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '4000', 10),
   apiPrefix: process.env.API_PREFIX || 'api/v1',

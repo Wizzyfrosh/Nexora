@@ -7,6 +7,7 @@ type SubscriptionAccess = {
   deletedAt?: Date | null;
 };
 export type PublicBusiness = {
+  owner?: { emailVerified: boolean; deletedAt?: Date | null };
   isPublished: boolean;
   deletedAt?: Date | null;
   subscription: SubscriptionAccess | null;
@@ -28,6 +29,8 @@ export function assertPublicAccess(
   if (
     !business ||
     business.deletedAt ||
+    (business.owner &&
+      (!business.owner.emailVerified || business.owner.deletedAt)) ||
     !business.isPublished ||
     !subscription ||
     subscription.deletedAt ||

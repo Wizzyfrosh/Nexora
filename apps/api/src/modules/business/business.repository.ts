@@ -21,6 +21,7 @@ export class BusinessRepository {
     return this.prisma.business.findUnique({
       where: { slug },
       include: {
+        owner: { select: { emailVerified: true, deletedAt: true } },
         subscription: true,
       },
     });

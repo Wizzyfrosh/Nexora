@@ -37,6 +37,8 @@ Require stronger administrator protection and auditable actions before exposing 
 
 ## Public content and SSRF
 
+The M4 canonical renderer uses a shared released-content allowlist and explicit DTO, READY tenant-owned image registry, escaped text, no-store reads and an authenticated noindex preview. Public boundaries additionally reject unverified/deleted owners. Publication is a dedicated owner/Origin-checked transaction with an audit event; generic profile updates cannot toggle it. Contact capture rechecks entitlement inside the write transaction and caps submissions at 100 per tenant/hour. This is not distributed IP/bot protection or a PII retention policy. See PUBLIC_WEBSITE.md for rollout-default-off semantics, legacy cutover, snapshot limits and the required staging journey.
+
 No arbitrary user-supplied scripts, raw HTML, executable SVG or custom CSS in MVP.
 Allowed protocols: https for external media and safe contact links; tel/mailto/WhatsApp only through structured validators.
 If server-side remote fetch is introduced: allowlist providers or block loopback/private/link-local networks and revalidate every redirect. URL syntax checks alone are insufficient.

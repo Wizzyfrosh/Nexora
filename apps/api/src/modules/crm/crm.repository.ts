@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException } from '@nestjs/common';
+import { assertPublicAccess } from '../../common/security/public-access';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateLeadDto } from '@nexora/shared-types';
 
@@ -7,7 +8,13 @@ export class CrmRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async createLead(businessId: string, data: CreateLeadDto) {
-    return this.prisma.lead.create({
+    return this.prisma.$transaction(async tx => {
+      await tx.business.update({ where: { id: businessId, deletedAt: null }, data: { updatedAt: new Date() } });
+      const business = await tx.business.findUniqueOrThrow({ where: { id: businessId }, include: { subscription: true, owner: { select: { emailVerified: true, deletedAt: true } } } });
+      assertPublicAccess(business);
+      if (await tx.lead.count({ where: { businessId, createdAt: { gte: new Date(Date.now() - 3600_000) } } }) >= 100)
+        throw new HttpException('Message capacity reached; try again later', 429);
+      return tx.lead.create({
       data: {
         businessId,
         name: data.name,
@@ -16,6 +23,7 @@ export class CrmRepository {
         message: data.message,
         source: data.source,
       },
+      });
     });
   }
 

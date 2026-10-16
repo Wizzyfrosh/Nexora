@@ -8,3 +8,4 @@ export * from './dto';
 export * from './billing';
 export * from './account';
 export * from './media';
+export * from './storefront';

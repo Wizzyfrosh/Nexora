@@ -34,11 +34,13 @@ Account implementation is now present behind configured SMTP delivery; see ACCOU
 Signed Cloudinary upload, ownership/size/type limits, cleanup and owner pickers are now implemented for public catalogue images. The API mediates and sanitizes uploads rather than granting reusable browser signatures. See MEDIA_SECURITY.md for quotas, legacy inventory, public-CDN limits and real-provider staging gates. Optional moderation is not implemented.
 Exit: fresh owner verifies/resets and uploads an image without exposing secrets; negative upload/auth tests pass.
 
-## M4 — Public website delivery
+## M4 — Public website delivery (pilot implementation present; rollout gate closed)
 
 Canonical /@slug route, explicit public DTO, eligible SSR renderer, released section/theme allowlist, authenticated preview and publication action.
 Add contact form, safe WhatsApp contact link, metadata and sitemap. Avoid arbitrary HTML.
 Exit: owner registers → saves real content → previews → publishes → visitor contacts → owner reads enquiry; unpublish/expiry removes public access.
+
+Implemented the canonical SSR renderer, bounded public DTO/catalogue paging, five-section editor, four style presets, authenticated noindex preview, dedicated audited publication, contact capture and eligible metadata/sitemap. See PUBLIC_WEBSITE.md for exact semantics and pilot caps. Publication defaults off pending P0/staging approval. Saved edits are live on an already published site; there is no draft revision system. Automated PostgreSQL and controlled browser evidence belongs in VERIFICATION.md, not a claim of real SMTP/Cloudinary delivery or an approved production launch.
 
 ## M5 — Analytics and operational readiness
 
