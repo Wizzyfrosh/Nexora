@@ -36,6 +36,8 @@ This inventory identifies code, not verified production endpoints. Public tenant
 
 ## New/changed API requirements
 
+Billing checkout accepts BASIC/PREMIUM only and a callback URL on the configured frontend origin. Only Paystack test keys can initialize checkout. Verification requires the saved purchase's business owner; foreign/unknown references return 404, unsuccessful/mismatched verification returns 400, provider unavailability returns 503. A successful replay returns recorded success without extending access again. Webhook HTTP 200 means durable receipt, not immediate fulfilment; processing runs from the inbox. See BILLING_ROLLOUT.md.
+
 Define explicit DTOs for theme, typography, sections and domains. Runtime content DTOs now validate catalogue, lead and website input; section/theme service validators provide additional bounds. Provider upload ownership remains a separate feature.
 Reject unknown properties, duplicate section IDs, unsupported section types, negative/NaN/oversized prices, unsafe URL protocols and cross-tenant foreign keys.
 Public serializers return only business contact/catalogue data intended for display; never owner identity/password/token fields, private leads or provider/payment data.

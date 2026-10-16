@@ -8,6 +8,7 @@ Account: name/email, password hash, session records. Private by default.
 Business public profile: selected business name/contact/address/social links and approved catalogue media/content.
 Leads: visitor name, email/phone/message and source; private to authorized business operators.
 Billing: provider references, amount/currency, status, period and audit history. Do not store card numbers or CVV.
+Purchase snapshots also retain the expected account email for provider matching. Inbox rows keep event type, delivery hash, provider object/reference and processing timestamps/status; they do not retain full provider payloads, card authorizations or signatures. Treat snapshots and inbox rows as private financial records under the retention decision below.
 Telemetry: bounded event types, resource/tenant IDs and coarse session identifiers; avoid raw IP storage unless operationally justified.
 Media: provider ID, URL, size/type, owner and alt text.
 

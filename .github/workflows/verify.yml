@@ -50,6 +50,7 @@ jobs:
       - run: npm ci
       - run: npm run build --workspace @nexora/shared-types
       - run: npm exec --workspace api -- prisma generate --schema prisma/schema.prisma
-      # Schema sync is restricted to the disposable service database in this job.
-      - run: npm exec --workspace api -- prisma db push --schema prisma/schema.prisma
+      # Apply the baseline and additive billing migration only to the disposable database.
+      - run: npm exec --workspace api -- prisma migrate deploy --schema prisma/schema.prisma
+      - run: npm exec --workspace api -- prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
       - run: npm run test:security --workspace api

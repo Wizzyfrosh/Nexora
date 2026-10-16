@@ -150,6 +150,13 @@ model Payment {
   paystackReference String       @unique
   paystackStatus    String
   paidAt            DateTime?
+  expectedAmountKobo Int?
+  expectedEmail     String?
+  purchasedPlan     SubscriptionPlan?
+  billingCycle      String?
+  providerPlanCode  String?
+  providerTransactionId String? @unique
+  fulfilledAt       DateTime?
   metadata          Json         @default("{}")
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
@@ -159,6 +166,21 @@ model Payment {
   @@index([subscriptionId])
   @@index([paystackReference])
   @@map("payments")
+}
+
+model PaymentEvent {
+  id            String   @id // SHA-256 of signed raw delivery; no authorization/card data retained
+  event         String
+  reference     String?
+  providerObjectId String?
+  status        String   @default("PENDING")
+  attempts      Int      @default(0)
+  nextAttemptAt DateTime @default(now())
+  processedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  @@index([status, nextAttemptAt])
+  @@map("payment_events")
 }
 
 model Category {

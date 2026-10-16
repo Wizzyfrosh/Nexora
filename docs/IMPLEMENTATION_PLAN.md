@@ -18,10 +18,12 @@ The public renderer and P0 security fixes are not silently counted as finished.
 
 Implemented first slice: tenant-scoped transaction writes, category checks, public policy/projections, runtime input/pagination validation, production configuration checks and OriginGuard. CI passed all 18 real PostgreSQL regression tests in run 38783059278. Media-provider ownership integration and final deployed cookie validation still require follow-up; do not claim those complete.
 
-## M2 — Trustworthy billing (next)
+## M2 — Trustworthy billing (known-purchase slice implemented; live gate closed)
 
 Durable pending purchases/inbox/fulfilment, raw signature verification, correct provider IDs, amount/currency/reference checks, transactional replay guard, reconciliation and event ordering.
 Exit: concurrent webhook/callback tests pass; provider test-mode payment grants exactly once; retry recovers without double grant. Live charging remains off until pricing/refund/support policy is confirmed.
+
+Implemented raw signatures, durable snapshot/inbox/reconciliation, owner-only verification, exact purchase matching and transactional fulfilment. See BILLING_ROLLOUT.md for migrations, recovery and remaining recurring lifecycle/refund/operator gates. Actual provider sandbox checkout still requires an owner's test account; automated tests substitute provider transport only. Live checkout is blocked in code.
 
 ## M3 — Identity completion and media
 
