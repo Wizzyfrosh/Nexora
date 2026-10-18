@@ -110,3 +110,12 @@ Pricing and Premium capabilities are explicitly marked as planned/early-release 
 
 Follow SETUP.md, run the root build and API unit command, start the production web server, then verify the public interactions listed above. Use a separate staging environment and real PostgreSQL for the integration/security scenarios in TESTING.md.
 The GitHub verify workflow runs builds/unit tests; hosted browser and live integration gates are future additions.
+
+## Hosted preview connection — 18 October 2026
+
+- Shared-types build and Next production build passed with the HTTPS Render upstream and relative browser API base.
+- Render built the existing tested API source; Neon migration ledger confirms all six migrations finished successfully.
+- Vercel preview `/api/v1` returned HTTP 200 with the Nest response, proving the external rewrite reaches Render.
+- No live provider transactions or customer data were used. The final deployed API proxy returns `Cache-Control: private, no-store, max-age=0`.
+- Hosted HTTP acceptance passed: signup 201; both cookies Secure, HttpOnly and SameSite=Lax; profile 200; foreign-Origin refresh 403; refresh 200; logout 200; profile after logout 401; subsequent login 200. Test account remains logged out. Homepage was also observed in the cloud browser. This is HTTP session acceptance, not a full browser dashboard/provider journey.
+- Targeted web ESLint passed from apps/web; git diff --check passed. An initial lint invocation from the repository root failed to find the web config and was rerun from the correct workspace.

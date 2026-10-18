@@ -1,5 +1,9 @@
 # Current implementation audit
 
+## Hosted preview follow-up (18 October 2026)
+
+Created the dedicated Neon database and Render preview API. All six Prisma migrations are applied in Neon. Vercel preview uses a same-origin API rewrite and a separate server-side upstream for storefront rendering. Provider email, media, billing and production launch gates remain open; see HOSTED_PREVIEW.md.
+
 Source: Wizzyfrosh/Nexora, initial baseline commit ec9dff6. Inspected 15 October 2026.
 Static code review and local builds/tests do not prove a deployed API or database works.
 
