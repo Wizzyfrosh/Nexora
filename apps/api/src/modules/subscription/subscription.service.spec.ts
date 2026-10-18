@@ -60,7 +60,7 @@ describe('Subscription purchase policy', () => {
     provider = {
       verifyTransaction: jest.fn().mockResolvedValue({ data: charge }),
       initializeTransaction: jest.fn(),
-      assertTestCheckout: jest.fn(),
+      assertCheckoutEnabled: jest.fn(),
       validateWebhookSignature: jest.fn().mockReturnValue(true),
     };
     service = new SubscriptionService(
