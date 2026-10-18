@@ -204,8 +204,12 @@ export class SubscriptionRepository {
     });
   }
 
-  async linkAndSync(anchor: Payment, provider: PaystackSubscription) {
-    checkProviderSubscription(provider, anchor, provider.subscription_code);
+  async linkAndSync(
+    anchor: Payment,
+    provider: PaystackSubscription,
+    expectedDomain: 'test' | 'live' = 'test',
+  ) {
+    checkProviderSubscription(provider, anchor, provider.subscription_code, expectedDomain);
     return this.prisma.$transaction(async (tx) => {
       const sub = await tx.subscription.update({
         where: {
@@ -218,7 +222,7 @@ export class SubscriptionRepository {
       const saved = await tx.payment.findUniqueOrThrow({
         where: { id: anchor.id },
       });
-      checkProviderSubscription(provider, saved, provider.subscription_code);
+      checkProviderSubscription(provider, saved, provider.subscription_code, expectedDomain);
       requireBilling(
         (!sub.paystackSubscriptionId ||
           sub.paystackSubscriptionId === provider.subscription_code) &&
