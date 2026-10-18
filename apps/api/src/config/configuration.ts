@@ -34,6 +34,8 @@ export interface EnvironmentVariables {
   CLOUDINARY_API_SECRET: string;
 
   // Email
+  EMAIL_PROVIDER: string;
+  BREVO_API_KEY: string;
   SMTP_HOST: string;
   SMTP_PORT: number;
   SMTP_USER: string;
@@ -86,6 +88,8 @@ export const configuration = () => ({
   },
 
   email: {
+    provider: process.env.EMAIL_PROVIDER || 'smtp',
+    brevoApiKey: process.env.BREVO_API_KEY || '',
     host: process.env.SMTP_HOST || '',
     port: parseInt(process.env.SMTP_PORT || '587', 10),
     user: process.env.SMTP_USER || '',

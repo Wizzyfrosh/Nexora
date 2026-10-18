@@ -1,8 +1,10 @@
 export function validateEnvironment(
   env: Record<string, unknown>,
 ): Record<string, unknown> {
+  const text = (value: unknown): string =>
+    typeof value === 'string' ? value : '';
   const mode = env.NODE_ENV ?? 'development';
-  if (!['development', 'test', 'production'].includes(String(mode))) {
+  if (!['development', 'test', 'production'].includes(text(mode))) {
     throw new Error('NODE_ENV must be development, test or production');
   }
   if (mode !== 'production') return env;
@@ -23,9 +25,23 @@ export function validateEnvironment(
   if (env.JWT_ACCESS_SECRET === env.JWT_REFRESH_SECRET) {
     throw new Error('Production JWT access and refresh secrets must differ');
   }
+  const mailProvider = env.EMAIL_PROVIDER || 'smtp';
+  if (!['smtp', 'brevo'].includes(text(mailProvider)))
+    throw new Error('EMAIL_PROVIDER must be smtp or brevo');
   if (
+    mailProvider === 'brevo' &&
+    (typeof env.BREVO_API_KEY !== 'string' ||
+      !env.BREVO_API_KEY.trim() ||
+      !/^[a-fA-F0-9]{64}$/.test(text(env.EMAIL_TOKEN_KEY)) ||
+      !/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(text(env.EMAIL_FROM)))
+  )
+    throw new Error(
+      'Configured Brevo requires BREVO_API_KEY, a plain EMAIL_FROM address and an independent 64-hex EMAIL_TOKEN_KEY',
+    );
+  if (
+    mailProvider === 'smtp' &&
     env.SMTP_HOST &&
-    (!/^[a-fA-F0-9]{64}$/.test(String(env.EMAIL_TOKEN_KEY || '')) ||
+    (!/^[a-fA-F0-9]{64}$/.test(text(env.EMAIL_TOKEN_KEY)) ||
       !env.SMTP_USER ||
       !env.SMTP_PASS ||
       !env.EMAIL_FROM)
@@ -35,7 +51,7 @@ export function validateEnvironment(
     );
   }
   try {
-    const database = new URL(String(env.DATABASE_URL ?? ''));
+    const database = new URL(text(env.DATABASE_URL));
     if (
       !['postgresql:', 'postgres:'].includes(database.protocol) ||
       !database.hostname
@@ -45,7 +61,7 @@ export function validateEnvironment(
     throw new Error('DATABASE_URL must be a PostgreSQL URL in production');
   }
   try {
-    const frontend = new URL(String(env.FRONTEND_URL ?? ''));
+    const frontend = new URL(text(env.FRONTEND_URL));
     if (
       frontend.protocol !== 'https:' ||
       frontend.origin !== env.FRONTEND_URL ||

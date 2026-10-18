@@ -15,7 +15,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AccountSecurityRepository } from './account-security.repository';
 import {
   AccountMailService,
-  SmtpAccountTransport,
+  AccountMailTransport,
 } from './account-mail.service';
 
 @Module({
@@ -40,7 +40,7 @@ import {
     JwtAuthGuard,
     AccountSecurityRepository,
     AccountMailService,
-    SmtpAccountTransport,
+    AccountMailTransport,
   ],
   exports: [AuthService, AuthRepository, JwtAuthGuard, JwtStrategy],
 })

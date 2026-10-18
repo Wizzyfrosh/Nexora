@@ -2,6 +2,8 @@
 
 ## Hosted preview follow-up (18 October 2026)
 
+Account email now also supports optional Brevo HTTPS delivery, preserving the encrypted outbox and SMTP fallback configuration. Provider credentials and real inbox verification remain pending; see BREVO_SETUP.md. This does not enable public publishing.
+
 Created the dedicated Neon database and Render preview API. All six Prisma migrations are applied in Neon. Vercel preview uses a same-origin API rewrite and a separate server-side upstream for storefront rendering. Provider email, media, billing and production launch gates remain open; see HOSTED_PREVIEW.md.
 
 Source: Wizzyfrosh/Nexora, initial baseline commit ec9dff6. Inspected 15 October 2026.
