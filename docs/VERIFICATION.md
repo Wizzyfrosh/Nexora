@@ -1,5 +1,12 @@
 # Verification report — 15 October 2026
 
+## Verification codes — 18 October 2026
+
+- API Prisma generation, shared-types build, Nest build and Next production build passed locally. 220 unit tests in 18 suites passed.
+- Targeted web ESLint passed. API source lint passed; including the existing integration file exposed its pre-existing unsafe-response typing/async-mock lint findings. No lint suppression added.
+- PostgreSQL integration cases now cover concurrent single-use claims, five-attempt lockout with concurrent guesses, expiry, authentication, resend replacement and legacy-link rejection. Execution requires the disposable PostgreSQL CI service; no hosted customer database is used for these tests.
+- Real inbox delivery of the new template remains pending deployment and a controlled recipient test. Pending old verification links are invalidated by the additive attempt-counter migration.
+
 ## First-party analytics — 16 October 2026
 
 - Final [CI run 38853598771](https://github.com/Wizzyfrosh/Nexora/actions/runs/38853598771) passes both jobs on source 8f6c81a658803886f5bf0a16d3c82af2f8571385: 200 unit tests across 16 suites, 122 PostgreSQL integration tests across six suites (21 analytics + 26 storefront + 14 media + 14 account + 29 billing + 18 tenant), all three builds, six migrations, zero schema drift, runtime/critical audit gates and production-prune API import smoke. The compiled standalone worker processed its persisted disposable-database fixture with no failure, pending or review rows. Subsequent changes only record documentation/evidence. No production database was used.

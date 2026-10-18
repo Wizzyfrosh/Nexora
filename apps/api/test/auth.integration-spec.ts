@@ -32,6 +32,8 @@ describe('Account security on isolated PostgreSQL (SMTP transport only mocked)',
     values.find((c) => c.startsWith(name + '='))!.split('=')[1];
   const rawToken = (text: string) =>
     new URL(text.match(/http:\/\/localhost:3000\/[^\s]+/)![0]).hash.slice(7);
+  const rawCode = (text: string) =>
+    text.match(/Your verification code: ([0-9]{6})/)![1];
   async function post(path: string, body: object, auth = cookies) {
     return request(app.getHttpServer())
       .post('/api/v1/auth/' + path)
@@ -149,10 +151,10 @@ describe('Account security on isolated PostgreSQL (SMTP transport only mocked)',
     });
     expect(queued.encryptedToken).not.toContain('verify_');
     await mail.deliverPending();
-    const token = rawToken(delivered[0].text);
+    const token = rawCode(delivered[0].text);
     expect(
       await prisma.emailVerificationToken.findUnique({
-        where: { token: tokenHash(token) },
+        where: { token: mail.codeHash(userId, token) },
       }),
     ).not.toBeNull();
     expect(
@@ -163,13 +165,13 @@ describe('Account security on isolated PostgreSQL (SMTP transport only mocked)',
   });
   it('verification is single-use under concurrent requests and does not auto-consume on GET', async () => {
     await mail.deliverPending();
-    const token = rawToken(delivered[0].text);
+    const token = rawCode(delivered[0].text);
     await request(app.getHttpServer())
       .get('/api/v1/auth/verify-email?token=' + token)
       .expect(404);
     const results = await Promise.all([
-      post('verify-email', { token }),
-      post('verify-email', { token }),
+      post('verify-email', { code: token }),
+      post('verify-email', { code: token }),
     ]);
     expect(results.map((r) => r.status).sort()).toEqual([200, 400]);
     expect(
@@ -220,7 +222,7 @@ describe('Account security on isolated PostgreSQL (SMTP transport only mocked)',
   });
   it('rejects expired and wrong-purpose action tokens', async () => {
     await mail.deliverPending();
-    const verify = rawToken(delivered[0].text);
+    const verify = rawCode(delivered[0].text);
     expect(
       (
         await post('reset-password', {
@@ -358,7 +360,7 @@ describe('Account security on isolated PostgreSQL (SMTP transport only mocked)',
   });
   it('supersedes old links and enforces a durable resend cooldown', async () => {
     await mail.deliverPending();
-    const old = rawToken(delivered[0].text);
+    const old = rawCode(delivered[0].text);
     expect((await post('resend-verification', {})).body.data.delivery).toBe(
       'UNCHANGED',
     );
@@ -369,10 +371,42 @@ describe('Account security on isolated PostgreSQL (SMTP transport only mocked)',
     expect((await post('resend-verification', {})).body.data.delivery).toBe(
       'QUEUED',
     );
-    expect((await post('verify-email', { token: old })).status).toBe(400);
     await mail.deliverPending();
-    const latest = rawToken(delivered.at(-1)!.text);
-    expect((await post('verify-email', { token: latest })).status).toBe(200);
+    const latest = rawCode(delivered.at(-1)!.text);
+    // A random six-digit code can repeat; check replacement of the persisted challenge.
+    if (old !== latest)
+      expect((await post('verify-email', { code: old })).status).toBe(400);
+    expect((await post('verify-email', { code: latest })).status).toBe(200);
+  });
+  it('commits failed attempts and locks a code after five guesses, including concurrent guesses', async () => {
+    await mail.deliverPending();
+    const code = rawCode(delivered[0].text);
+    const wrong = code === '000000' ? '000001' : '000000';
+    const guesses = await Promise.all(
+      Array.from({ length: 7 }, () => post('verify-email', { code: wrong })),
+    );
+    expect(guesses.every((r) => r.status === 400)).toBe(true);
+    expect(
+      (
+        await prisma.emailVerificationToken.findFirstOrThrow({
+          where: { email },
+        })
+      ).attempts,
+    ).toBe(5);
+    expect((await post('verify-email', { code })).status).toBe(400);
+  });
+  it('rejects expired codes, unauthenticated submissions and old link payloads', async () => {
+    await mail.deliverPending();
+    const code = rawCode(delivered[0].text);
+    expect((await post('verify-email', { code }, [])).status).toBe(401);
+    expect((await post('verify-email', { token: 'verify_old' })).status).toBe(
+      400,
+    );
+    await prisma.emailVerificationToken.updateMany({
+      where: { email },
+      data: { expiresAt: new Date(0) },
+    });
+    expect((await post('verify-email', { code })).status).toBe(400);
   });
   it('rejects cross-origin cookie refresh and does not consume its token', async () => {
     await request(app.getHttpServer())

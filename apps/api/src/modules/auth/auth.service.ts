@@ -300,10 +300,17 @@ export class AuthService {
     return this.mail.enqueue(user.id, 'VERIFY');
   }
 
-  async verifyEmail(token: string): Promise<void> {
-    if (!validToken(token, 'verify'))
-      throw new BadRequestException('Link is invalid, expired or already used');
-    await this.security.consumeAction(tokenHash(token), 'VERIFY');
+  async verifyEmail(userId: string, code: string): Promise<void> {
+    if (
+      !/^[0-9]{6}$/.test(code) ||
+      !(await this.security.consumeVerification(
+        userId,
+        this.mail.codeHash(userId, code),
+      ))
+    )
+      throw new BadRequestException(
+        'Code is incorrect, expired or already used. Request a new code if needed.',
+      );
   }
 
   async forgotPassword(email: string): Promise<void> {

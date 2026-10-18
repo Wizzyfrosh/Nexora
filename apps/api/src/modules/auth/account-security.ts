@@ -1,4 +1,14 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomInt } from 'node:crypto';
+export const verificationCode = () =>
+  randomInt(0, 1000000).toString().padStart(6, '0');
+export function verificationHash(userId: string, code: string, key: Buffer) {
+  return (
+    'otp:' +
+    createHmac('sha256', key)
+      .update('VERIFY:' + userId + ':' + code)
+      .digest('hex')
+  );
+}
 export type AccountPurpose = 'VERIFY' | 'RESET';
 export function secretToken(prefix: 'rt' | 'verify' | 'reset') {
   return prefix + '_' + randomBytes(32).toString('base64url');

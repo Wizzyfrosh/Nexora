@@ -2,6 +2,14 @@
 
 ## Delivered
 
+### Verification-code cutover (18 October 2026)
+
+Email verification now uses a cryptographically random six-digit code. Its HMAC-SHA256 digest is bound to the authenticated user and independent EMAIL_TOKEN_KEY. Verification requires an active session; the API does not accept a client-supplied email or user ID. Codes expire ten minutes after issuance and allow five incorrect attempts. User-row locking serializes attempts and resends; failed attempts commit even when the request returns an error. The existing 60-second resend cooldown applies across instances. A replacement removes the prior challenge. Codes are encrypted in the durable outbox and rendered in branded HTML with plain-text fallback; no verification link or code is returned by the API. Reset links remain unchanged.
+
+Migration 20261018000000_verification_codes adds the attempt counter and invalidates outstanding verification links and pending verification mail. Verified users, sessions, password-reset tokens and business data are preserved. Deploy API and web together; unverified users request a fresh code. EMAIL_TOKEN_KEY rotation also invalidates code digests. Real inbox acceptance remains separate from build/test success.
+
+The token-link description below records the earlier implementation; verification behavior is superseded by the code cutover above.
+
 Email addresses normalize before lookup and creation. Session, verification and reset tokens are 256-bit random, purpose-prefixed values. The database stores only SHA-256 digests of bearer tokens. Reset and verification consumption lock the user and claim the token atomically; expired, superseded, wrong-purpose and reused links fail. Password reset changes the hash, invalidates other reset links and revokes all refresh families in one transaction.
 
 Access JWTs include a session-family ID. Every authenticated request checks a current, unrevoked, unexpired family against PostgreSQL. Logout revokes that family; reset revokes every family. Refresh rotation creates a distinct token atomically with an absolute family expiry (default seven days, configurable maximum 30 days). Reuse of a consumed refresh token revokes its whole family, including the newest access token. Legacy JWTs without a family are rejected. Access lifetime is bounded to 15 minutes and remaining family time; cookie durations follow those actual limits.

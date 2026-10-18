@@ -9,14 +9,21 @@ import { ConfigService } from '@nestjs/config';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { createTransport } from 'nodemailer';
 import { AccountSecurityRepository } from './account-security.repository';
-import { AccountPurpose, secretToken, tokenHash } from './account-security';
+import {
+  AccountPurpose,
+  secretToken,
+  tokenHash,
+  verificationCode,
+  verificationHash,
+} from './account-security';
+import { verificationEmail } from './verification-email';
 
 @Injectable()
 export class AccountMailTransport {
   constructor(private readonly config: ConfigService) {}
-  async send(to: string, subject: string, text: string) {
+  async send(to: string, subject: string, text: string, html?: string) {
     const provider = this.config.get<string>('email.provider') || 'smtp';
-    if (provider === 'brevo') return this.sendBrevo(to, subject, text);
+    if (provider === 'brevo') return this.sendBrevo(to, subject, text, html);
     if (provider !== 'smtp')
       throw new ServiceUnavailableException('Email transport unavailable');
     const port = this.config.get<number>('email.port') || 587;
@@ -45,6 +52,7 @@ export class AccountMailTransport {
           to,
           subject,
           text,
+          html,
         }),
         new Promise<never>((_, reject) => {
           timer = setTimeout(() => reject(new Error('Mail deadline')), 10000);
@@ -60,7 +68,12 @@ export class AccountMailTransport {
     }
   }
 
-  private async sendBrevo(to: string, subject: string, text: string) {
+  private async sendBrevo(
+    to: string,
+    subject: string,
+    text: string,
+    html?: string,
+  ) {
     const apiKey = this.config.get<string>('email.brevoApiKey');
     const from = this.config.get<string>('email.from');
     if (!apiKey || !from)
@@ -80,6 +93,7 @@ export class AccountMailTransport {
           to: [{ email: to }],
           subject,
           textContent: text,
+          ...(html ? { htmlContent: html } : {}),
         }),
       });
       if (response.status !== 201) throw new Error('Provider rejected email');
@@ -163,17 +177,21 @@ export class AccountMailService implements OnModuleInit, OnModuleDestroy {
   }
   async enqueue(userId: string, purpose: AccountPurpose) {
     if (!this.configured()) return { delivery: 'UNAVAILABLE' as const };
-    const raw = secretToken(purpose === 'VERIFY' ? 'verify' : 'reset'),
-      hash = tokenHash(raw);
+    const raw =
+        purpose === 'VERIFY' ? verificationCode() : secretToken('reset'),
+      hash = purpose === 'VERIFY' ? this.codeHash(userId, raw) : tokenHash(raw);
     const ciphertext = this.seal(raw, purpose + ':' + userId + ':' + hash);
     const created = await this.repo.issueAction(
       userId,
       purpose,
       hash,
       ciphertext,
-      new Date(Date.now() + (purpose === 'VERIFY' ? 24 : 1) * 3600000),
+      new Date(Date.now() + (purpose === 'VERIFY' ? 600000 : 3600000)),
     );
     return { delivery: created ? ('QUEUED' as const) : ('UNCHANGED' as const) };
+  }
+  codeHash(userId: string, code: string) {
+    return verificationHash(userId, code, this.key());
   }
   async deliverPending() {
     if (this.running || !this.configured()) return;
@@ -204,25 +222,36 @@ export class AccountMailService implements OnModuleInit, OnModuleDestroy {
             mail.encryptedToken,
             purpose + ':' + mail.userId + ':' + mail.tokenHash,
           );
-          if (tokenHash(raw) !== mail.tokenHash)
+          if (
+            (purpose === 'VERIFY'
+              ? this.codeHash(mail.userId, raw)
+              : tokenHash(raw)) !== mail.tokenHash
+          )
             throw new Error('Invalid mail token');
+          if (purpose === 'VERIFY') {
+            const message = verificationEmail(raw);
+            await this.transport.send(
+              recipient,
+              message.subject,
+              message.text,
+              message.html,
+            );
+            await this.repo.finishMail(mail.id, 'SENT');
+            continue;
+          }
           const url = new URL(
-            purpose === 'VERIFY' ? '/verify-email' : '/reset-password',
+            '/reset-password',
             this.config.get<string>('frontendUrl'),
           );
           url.hash = new URLSearchParams({ token: raw }).toString();
           await this.transport.send(
             recipient,
-            purpose === 'VERIFY'
-              ? 'Verify your Nexora email'
-              : 'Reset your Nexora password',
-            (purpose === 'VERIFY'
-              ? 'Confirm your email address'
-              : 'Choose a new password') +
+            'Reset your Nexora password',
+            'Choose a new password' +
               ' using this single-use link:\n\n' +
               url.href +
               '\n\nThis link expires ' +
-              (purpose === 'VERIFY' ? 'in 24 hours.' : 'in one hour.') +
+              'in one hour.' +
               '\nIf you did not request this, you can ignore this email.',
           );
           await this.repo.finishMail(mail.id, 'SENT');

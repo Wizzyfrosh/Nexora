@@ -88,9 +88,8 @@ export class ResetPasswordRequestDto {
 
 export class VerifyEmailRequestDto {
   @IsString()
-  @IsNotEmpty({ message: 'Verification token is required' })
-  @MaxLength(128)
-  token!: string;
+  @Matches(/^[0-9]{6}$/, { message: 'Enter the six-digit verification code' })
+  code!: string;
 }
 
 export class RefreshTokenRequestDto {

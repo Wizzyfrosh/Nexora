@@ -54,6 +54,7 @@ model EmailVerificationToken {
   email     String
   expiresAt DateTime
   createdAt DateTime @default(now())
+  attempts  Int      @default(0)
 
   @@index([token])
   @@index([email])
