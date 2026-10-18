@@ -1,9 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { AuthService, AuthUser } from '@/lib/api/auth';
-import { LoginDto, SignupDto } from '@nexora/shared-types';
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AuthService, type AuthUser } from "@/lib/api/auth";
+import type { LoginDto, SignupDto } from "@nexora/shared-types";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -19,53 +19,64 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const revision = useRef(0);
   const router = useRouter();
 
   const refreshUser = async () => {
+    const current = ++revision.current;
     try {
-      const currentUser = await AuthService.getCurrentUser();
-      setUser(currentUser);
-    } catch (error) {
-      setUser(null);
+      const profile = await AuthService.getCurrentUser();
+      if (current === revision.current) setUser(profile);
+    } catch {
+      if (current === revision.current) setUser(null);
     } finally {
-      setIsLoading(false);
+      if (current === revision.current) setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    refreshUser();
+    void refreshUser();
   }, []);
 
   const login = async (dto: LoginDto) => {
+    const current = ++revision.current;
     setIsLoading(true);
     try {
-      const loggedInUser = await AuthService.login(dto);
-      setUser(loggedInUser);
-      router.push('/dashboard');
+      const profile = await AuthService.login(dto);
+      if (current === revision.current) {
+        setUser(profile);
+        router.replace(profile.emailVerified ? "/dashboard" : "/verify-email");
+      }
     } finally {
-      setIsLoading(false);
+      if (current === revision.current) setIsLoading(false);
     }
   };
 
   const signup = async (dto: SignupDto) => {
+    const current = ++revision.current;
     setIsLoading(true);
     try {
-      const signedUpUser = await AuthService.signup(dto);
-      setUser(signedUpUser);
-      router.push('/dashboard');
+      const profile = await AuthService.signup(dto);
+      if (current === revision.current) {
+        setUser(profile);
+        router.replace(profile.emailVerified ? "/dashboard" : "/verify-email");
+      }
     } finally {
-      setIsLoading(false);
+      if (current === revision.current) setIsLoading(false);
     }
   };
 
   const logout = async () => {
+    const current = ++revision.current;
     setIsLoading(true);
     try {
       await AuthService.logout();
-      setUser(null);
-      router.push('/login');
+      if (current === revision.current) {
+        setUser(null);
+        router.replace("/login");
+      }
     } finally {
-      setIsLoading(false);
+      if (current === revision.current) setIsLoading(false);
     }
   };
 
@@ -79,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }
