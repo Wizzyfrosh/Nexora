@@ -291,7 +291,7 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
   }
 
   async cancelRenewal(userId: string, businessId: string) {
-    this.paystackService.assertCheckoutEnabled();
+    // Existing subscriptions can still be cancelled after checkout is disabled.
     return this.subRepo.requestCancellation(userId, businessId);
   }
 }
