@@ -30,11 +30,12 @@ export function checkProviderSubscription(
   data: PaystackSubscription,
   anchor: Payment,
   code: string,
+  expectedDomain: 'test' | 'live' = 'test',
 ) {
   requireBilling(
     /^SUB_[A-Za-z0-9]+$/.test(code) &&
       data.subscription_code === code &&
-      data.domain === 'test' &&
+      data.domain === expectedDomain &&
       anchor.fulfilledAt &&
       !anchor.deletedAt &&
       anchor.providerPlanCode &&
