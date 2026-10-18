@@ -59,6 +59,18 @@ describe('Recurring billing evidence', () => {
     ).not.toThrow();
     expect(checkInvoice(invoice, charge, anchor, 'CUS_test').end).toEqual(end);
   });
+  it('accepts live evidence only when the selected provider domain is live', () => {
+    const live = { ...sub, domain: 'live' };
+    expect(() =>
+      checkProviderSubscription(live, anchor, 'SUB_test', 'live'),
+    ).not.toThrow();
+    expect(() =>
+      checkProviderSubscription(live, anchor, 'SUB_test', 'test'),
+    ).toThrow('requires review');
+    expect(() =>
+      checkProviderSubscription(sub, anchor, 'SUB_test', 'live'),
+    ).toThrow('requires review');
+  });
   it.each([null, 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, 'AUTH_test', '0'])(
     'rejects invalid transaction IDs %s',
     (id) => {
