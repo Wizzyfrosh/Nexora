@@ -18,6 +18,8 @@ A running API worker polls every 15 seconds and claims up to five jobs with a tw
 
 ## Configure privately
 
+For hosts that block SMTP, optional `EMAIL_PROVIDER=brevo` uses Brevo's HTTPS API. See BREVO_SETUP.md for required API key, sender, encryption key and acceptance checks. SMTP remains the default when EMAIL_PROVIDER is unset. Provider acceptance is never proof of inbox delivery.
+
 Set the API environment: SMTP_HOST, SMTP_PORT (normally 587 STARTTLS or 465 TLS), SMTP_USER, SMTP_PASS, EMAIL_FROM (an authorized sender), EMAIL_TOKEN_KEY, and the exact FRONTEND_URL. No specific paid provider is required; use a provider that supports authenticated TLS SMTP. Never use an email inbox password when the provider requires an SMTP/app credential.
 
 Generate EMAIL_TOKEN_KEY locally with:

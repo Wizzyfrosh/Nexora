@@ -7,6 +7,35 @@ const production = {
   FRONTEND_URL: 'https://example.com',
 };
 describe('production configuration', () => {
+  const brevo = {
+    ...production,
+    EMAIL_PROVIDER: 'brevo',
+    BREVO_API_KEY: 'private-test-key',
+    EMAIL_FROM: 'accounts@example.test',
+    EMAIL_TOKEN_KEY: 'ab'.repeat(32),
+  };
+  it('accepts complete Brevo configuration without SMTP', () => {
+    expect(validateEnvironment(brevo)).toBe(brevo);
+  });
+  it.each(['BREVO_API_KEY', 'EMAIL_FROM', 'EMAIL_TOKEN_KEY'])(
+    'rejects incomplete Brevo configuration: %s',
+    (key) => {
+      expect(() => validateEnvironment({ ...brevo, [key]: '' })).toThrow(
+        'Configured Brevo',
+      );
+    },
+  );
+  it('rejects malformed Brevo sender and unsupported provider', () => {
+    expect(() =>
+      validateEnvironment({
+        ...brevo,
+        EMAIL_FROM: 'Nexora <accounts@example.test>',
+      }),
+    ).toThrow();
+    expect(() =>
+      validateEnvironment({ ...production, EMAIL_PROVIDER: 'other' }),
+    ).toThrow();
+  });
   it('rejects configured SMTP without a secure mail key and sender', () => {
     expect(() =>
       validateEnvironment({ ...production, SMTP_HOST: 'smtp.example.test' }),

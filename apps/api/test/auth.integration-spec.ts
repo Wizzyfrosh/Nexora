@@ -11,7 +11,7 @@ import { DatabaseModule } from '../src/database/database.module';
 import { AuthModule } from '../src/modules/auth/auth.module';
 import {
   AccountMailService,
-  SmtpAccountTransport,
+  AccountMailTransport,
 } from '../src/modules/auth/account-mail.service';
 import { AccountSecurityRepository } from '../src/modules/auth/account-security.repository';
 import { tokenHash } from '../src/modules/auth/account-security';
@@ -89,7 +89,7 @@ describe('Account security on isolated PostgreSQL (SMTP transport only mocked)',
         { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
       ],
     })
-      .overrideProvider(SmtpAccountTransport)
+      .overrideProvider(AccountMailTransport)
       .useValue({ send })
       .compile();
     app = module.createNestApplication({ logger: false });

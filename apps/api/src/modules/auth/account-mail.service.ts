@@ -12,9 +12,13 @@ import { AccountSecurityRepository } from './account-security.repository';
 import { AccountPurpose, secretToken, tokenHash } from './account-security';
 
 @Injectable()
-export class SmtpAccountTransport {
+export class AccountMailTransport {
   constructor(private readonly config: ConfigService) {}
   async send(to: string, subject: string, text: string) {
+    const provider = this.config.get<string>('email.provider') || 'smtp';
+    if (provider === 'brevo') return this.sendBrevo(to, subject, text);
+    if (provider !== 'smtp')
+      throw new ServiceUnavailableException('Email transport unavailable');
     const port = this.config.get<number>('email.port') || 587;
     const transport = createTransport({
       host: this.config.get<string>('email.host'),
@@ -55,6 +59,38 @@ export class SmtpAccountTransport {
       transport.close();
     }
   }
+
+  private async sendBrevo(to: string, subject: string, text: string) {
+    const apiKey = this.config.get<string>('email.brevoApiKey');
+    const from = this.config.get<string>('email.from');
+    if (!apiKey || !from)
+      throw new ServiceUnavailableException('Email transport unavailable');
+    try {
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        redirect: 'error',
+        signal: AbortSignal.timeout(10000),
+        headers: {
+          'api-key': apiKey,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { email: from, name: 'Nexora' },
+          to: [{ email: to }],
+          subject,
+          textContent: text,
+        }),
+      });
+      if (response.status !== 201) throw new Error('Provider rejected email');
+      const result = (await response.json()) as { messageId?: unknown };
+      if (typeof result.messageId !== 'string' || !result.messageId.trim())
+        throw new Error('Missing provider receipt');
+    } catch {
+      // Never expose provider bodies: they can contain recipients or tokens.
+      throw new ServiceUnavailableException('Email transport unavailable');
+    }
+  }
 }
 
 @Injectable()
@@ -65,7 +101,7 @@ export class AccountMailService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly repo: AccountSecurityRepository,
     private readonly config: ConfigService,
-    private readonly transport: SmtpAccountTransport,
+    private readonly transport: AccountMailTransport,
   ) {}
 
   onModuleInit() {
@@ -76,13 +112,19 @@ export class AccountMailService implements OnModuleInit, OnModuleDestroy {
     if (this.timer) clearInterval(this.timer);
   }
   configured() {
+    const provider = this.config.get<string>('email.provider') || 'smtp';
+    const required =
+      provider === 'brevo'
+        ? ['email.brevoApiKey', 'email.from']
+        : provider === 'smtp'
+          ? ['email.host', 'email.user', 'email.pass', 'email.from']
+          : [];
     return (
+      required.length > 0 &&
       /^[a-fA-F0-9]{64}$/.test(
         this.config.get<string>('email.tokenKey') || '',
       ) &&
-      ['email.host', 'email.user', 'email.pass', 'email.from'].every((key) =>
-        Boolean(this.config.get<string>(key)),
-      )
+      required.every((key) => Boolean(this.config.get<string>(key)))
     );
   }
   private key() {

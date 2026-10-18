@@ -119,3 +119,10 @@ The GitHub verify workflow runs builds/unit tests; hosted browser and live integ
 - No live provider transactions or customer data were used. The final deployed API proxy returns `Cache-Control: private, no-store, max-age=0`.
 - Hosted HTTP acceptance passed: signup 201; both cookies Secure, HttpOnly and SameSite=Lax; profile 200; foreign-Origin refresh 403; refresh 200; logout 200; profile after logout 401; subsequent login 200. Test account remains logged out. Homepage was also observed in the cloud browser. This is HTTP session acceptance, not a full browser dashboard/provider journey.
 - Targeted web ESLint passed from apps/web; git diff --check passed. An initial lint invocation from the repository root failed to find the web config and was rerun from the correct workspace.
+
+## Brevo account transport — 18 October 2026
+
+- Prisma generation and Nest API build passed.
+- `npm test -- --runInBand` from apps/api: 218 tests across 17 suites passed, including HTTPS transport acceptance/rejection, redacted network errors, missing receipt/key, encrypted queue configuration and production configuration checks.
+- Provider requests are mocked in tests. No real messages sent; sender verification, private configuration and inbox acceptance remain pending.
+- Targeted ESLint on transport/configuration and their new tests, final API build, and git diff --check passed. Configuration values now require strings instead of coercing arbitrary objects.

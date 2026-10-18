@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import {
   AccountMailService,
-  SmtpAccountTransport,
+  AccountMailTransport,
 } from './account-mail.service';
 import { AccountSecurityRepository } from './account-security.repository';
 import { secretToken, tokenHash, validToken } from './account-security';
@@ -21,7 +21,7 @@ describe('Account secrets and mail envelopes', () => {
           tokenKey: key,
         },
       }),
-      {} as SmtpAccountTransport,
+      {} as AccountMailTransport,
     );
     return { mail, repo };
   }
@@ -56,7 +56,7 @@ describe('Account secrets and mail envelopes', () => {
     const mail = new AccountMailService(
       {} as AccountSecurityRepository,
       new ConfigService(),
-      {} as SmtpAccountTransport,
+      {} as AccountMailTransport,
     );
     expect(await mail.enqueue('owner', 'VERIFY')).toEqual({
       delivery: 'UNAVAILABLE',
