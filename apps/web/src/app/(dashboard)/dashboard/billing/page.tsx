@@ -148,8 +148,8 @@ function BillingContent() {
         </p>
       </div>
       <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm">
-        Checkout is in test mode. Live payments are unavailable while launch
-        checks are completed.
+        Paystack checkout may be unavailable while launch checks are completed.
+        Paid access begins only after the payment is independently verified.
       </div>
       <div aria-live="polite">
         {verifying && <p role="status">Checking your payment with Paystack…</p>}
@@ -301,8 +301,8 @@ function BillingContent() {
                 </span>
               </p>
               <p className="text-sm text-muted-foreground">
-                Proposed annual price. Test checkout does not make unreleased
-                features available.
+                Annual plan pricing. Payment does not unlock features that are not yet
+                released.
               </p>
               <Button
                 className="w-full"
