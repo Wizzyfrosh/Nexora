@@ -39,9 +39,36 @@ describe('Paystack transport security', () => {
     expect(() =>
       new PaystackService(
         new ConfigService({ paystack: { secretKey: 'sk_live_fake' } }),
-      ).assertTestCheckout(),
-    ).toThrow('Only Paystack test');
+      ).assertCheckoutEnabled(),
+    ).toThrow('Live checkout is disabled');
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('permits a live key only after an explicit production switch', () => {
+    const live = new PaystackService(
+      new ConfigService({
+        nodeEnv: 'production',
+        paystack: { secretKey: 'sk_live_fake', liveEnabled: true },
+      }),
+    );
+    expect(live.expectedDomain()).toBe('live');
+    expect(() => live.assertCheckoutEnabled()).not.toThrow();
+    expect(() =>
+      new PaystackService(
+        new ConfigService({
+          nodeEnv: 'test',
+          paystack: { secretKey: 'sk_live_fake', liveEnabled: true },
+        }),
+      ).assertCheckoutEnabled(),
+    ).toThrow('Live checkout is disabled');
+  });
+  it('preserves cancellation transport even if new live checkout is paused', async () => {
+    const live = new PaystackService(
+      new ConfigService({ nodeEnv: 'production', paystack: { secretKey: 'sk_live_fake' } }),
+    );
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ status: true, data: null }), { status: 200 }),
+    );
+    await expect(live.cancelSubscription('SUB_123', 'token')).resolves.toBeUndefined();
   });
   it('bounds provider requests and hides provider errors', async () => {
     const mock = jest
