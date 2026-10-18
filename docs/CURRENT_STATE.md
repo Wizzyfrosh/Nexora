@@ -2,6 +2,8 @@
 
 ## Hosted preview follow-up (18 October 2026)
 
+Verification-code follow-up replaces email verification links with authenticated six-digit codes, keyed account-bound digests, a ten-minute expiry, five durable attempts, and branded HTML/plain-text email. The new screen supports paste/autofill, resend cooldown and success/errors. Migration retires pending verification links only; password resets retain their existing flow. Hosted inbox acceptance remains required.
+
 Account email now also supports optional Brevo HTTPS delivery, preserving the encrypted outbox and SMTP fallback configuration. Provider credentials and real inbox verification remain pending; see BREVO_SETUP.md. This does not enable public publishing.
 
 Created the dedicated Neon database and Render preview API. All six Prisma migrations are applied in Neon. Vercel preview uses a same-origin API rewrite and a separate server-side upstream for storefront rendering. Provider email, media, billing and production launch gates remain open; see HOSTED_PREVIEW.md.

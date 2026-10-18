@@ -149,12 +149,15 @@ export class AuthController {
     return this.authService.resendVerification(userId);
   }
 
-  @Public()
+  @UseGuards(JwtAuthGuard)
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   @ResponseMessage('Email verified successfully')
-  async verifyEmail(@Body() dto: VerifyEmailRequestDto) {
-    await this.authService.verifyEmail(dto.token);
+  async verifyEmail(
+    @CurrentUser('id') userId: string,
+    @Body() dto: VerifyEmailRequestDto,
+  ) {
+    await this.authService.verifyEmail(userId, dto.code);
     return null;
   }
 

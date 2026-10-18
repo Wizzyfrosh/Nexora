@@ -15,7 +15,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    if (user) router.replace("/dashboard");
+    if (user)
+      router.replace(user.emailVerified ? "/dashboard" : "/verify-email");
   }, [user, router]);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -185,7 +186,14 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
                   : "Sign in to your workspace"}
               <ArrowUpRight size={17} />
             </button>
-            {!registering && <Link href="/forgot-password" className="text-sm text-violet-700 underline">Forgot password?</Link>}
+            {!registering && (
+              <Link
+                href="/forgot-password"
+                className="text-sm text-violet-700 underline"
+              >
+                Forgot password?
+              </Link>
+            )}
           </form>
           <p className="auth-switch">
             {registering ? "Already have an account?" : "New to Nexora?"}{" "}

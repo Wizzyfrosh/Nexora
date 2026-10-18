@@ -168,6 +168,49 @@ export class AccountSecurityRepository {
       : this.prisma.passwordResetToken.findUnique({ where: { token: hash } });
   }
 
+  async consumeVerification(userId: string, hash: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // Serialize attempts, successful claims and resends on the same user row.
+      const user = await tx.user.update({
+        where: { id: userId, deletedAt: null },
+        data: { updatedAt: new Date() },
+      });
+      const token = await tx.emailVerificationToken.findFirst({
+        where: { email: user.email },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (
+        user.emailVerified ||
+        !token ||
+        token.expiresAt <= new Date() ||
+        token.attempts >= 5
+      )
+        return false;
+      if (token.token !== hash) {
+        await tx.emailVerificationToken.update({
+          where: { id: token.id },
+          data: { attempts: { increment: 1 } },
+        });
+        // Return false so failed-attempt accounting commits rather than rolls back.
+        return false;
+      }
+      await tx.emailVerificationToken.delete({ where: { id: token.id } });
+      await tx.user.update({
+        where: { id: userId },
+        data: { emailVerified: true },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId,
+          action: 'EMAIL_VERIFIED',
+          entity: 'User',
+          entityId: userId,
+        },
+      });
+      return true;
+    });
+  }
+
   async consumeAction(
     hash: string,
     purpose: AccountPurpose,
