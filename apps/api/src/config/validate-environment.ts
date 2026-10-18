@@ -50,6 +50,20 @@ export function validateEnvironment(
       'Configured SMTP requires credentials, EMAIL_FROM and an independent 64-hex EMAIL_TOKEN_KEY',
     );
   }
+  // Runtime switches must fail closed. Neither is inferred from the presence of a key.
+  if (env.PAYSTACK_LIVE_ENABLED === 'true') {
+    if (!text(env.PAYSTACK_SECRET_KEY).startsWith('sk_live_'))
+      throw new Error('Live checkout requires a Paystack live secret key');
+    if (text(env.FRONTEND_URL) !== 'https://nexora.froshcodeorbit.site')
+      throw new Error('Live checkout requires the approved Nexora production origin');
+  }
+  if (env.PUBLIC_PUBLISHING_ENABLED === 'true') {
+    if (
+      !/^[a-zA-Z0-9_-]+$/.test(text(env.CLOUDINARY_CLOUD_NAME)) ||
+      !/^\d+$/.test(text(env.CLOUDINARY_API_KEY)) ||
+      !text(env.CLOUDINARY_API_SECRET).trim()
+    ) throw new Error('Public publishing requires configured Cloudinary storage');
+  }
   try {
     const database = new URL(text(env.DATABASE_URL));
     if (
