@@ -96,6 +96,40 @@ describe('production configuration', () => {
         FRONTEND_URL: 'https://example.com/dashboard',
       }),
     ).toThrow());
+  it('keeps live checkout off unless all explicit launch controls match', () => {
+    expect(() =>
+      validateEnvironment({ ...production, PAYSTACK_LIVE_ENABLED: 'true' }),
+    ).toThrow('Live checkout requires a Paystack live secret key');
+    expect(() =>
+      validateEnvironment({
+        ...production,
+        PAYSTACK_LIVE_ENABLED: 'true',
+        PAYSTACK_SECRET_KEY: 'sk_live_example',
+      }),
+    ).toThrow('approved Nexora production origin');
+    expect(() =>
+      validateEnvironment({
+        ...production,
+        FRONTEND_URL: 'https://nexora.froshcodeorbit.site',
+        PAYSTACK_LIVE_ENABLED: 'true',
+        PAYSTACK_SECRET_KEY: 'sk_live_example',
+      }),
+    ).not.toThrow();
+  });
+  it('rejects publishing without verified-format storage settings', () => {
+    expect(() =>
+      validateEnvironment({ ...production, PUBLIC_PUBLISHING_ENABLED: 'true' }),
+    ).toThrow('configured Cloudinary');
+    expect(() =>
+      validateEnvironment({
+        ...production,
+        PUBLIC_PUBLISHING_ENABLED: 'true',
+        CLOUDINARY_CLOUD_NAME: 'nexora-media',
+        CLOUDINARY_API_KEY: '123456789',
+        CLOUDINARY_API_SECRET: 'example-private-value',
+      }),
+    ).not.toThrow();
+  });
   it('rejects NODE_ENV typos', () =>
     expect(() =>
       validateEnvironment({ ...production, NODE_ENV: 'prod' }),
