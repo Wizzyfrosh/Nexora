@@ -100,7 +100,7 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
     ) {
       throw new BadRequestException('Invalid callback URL');
     }
-    this.paystackService.assertTestCheckout();
+    this.paystackService.assertCheckoutEnabled();
     const reference = 'nexora-' + randomUUID();
     // Snapshot before contacting provider. A timeout can still leave a recoverable charge.
     await this.subRepo.createPayment({
@@ -291,7 +291,7 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
   }
 
   async cancelRenewal(userId: string, businessId: string) {
-    this.paystackService.assertTestCheckout();
+    this.paystackService.assertCheckoutEnabled();
     return this.subRepo.requestCancellation(userId, businessId);
   }
 }
