@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthService, type AuthUser } from "@/lib/api/auth";
 import type { LoginDto, SignupDto } from "@nexora/shared-types";
@@ -22,7 +22,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const revision = useRef(0);
   const router = useRouter();
 
-  const refreshUser = async () => {
+  // A later auth mutation always takes precedence over an older profile request.
+  const refreshUser = useCallback(async () => {
     const current = ++revision.current;
     try {
       const profile = await AuthService.getCurrentUser();
@@ -32,11 +33,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       if (current === revision.current) setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void refreshUser();
-  }, []);
+  }, [refreshUser]);
 
   const login = async (dto: LoginDto) => {
     const current = ++revision.current;
