@@ -7,7 +7,6 @@ import cookieParser from 'cookie-parser';
 import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
 import type { Server } from 'node:http';
-import type { UploadedImage } from '../src/modules/media/cloudinary.transport';
 import { configuration } from '../src/config/configuration';
 import { DatabaseModule } from '../src/database/database.module';
 import { PrismaService } from '../src/database/prisma.service';
@@ -19,7 +18,7 @@ import { WebsiteModule } from '../src/modules/website/website.module';
 import { MediaModule } from '../src/modules/media/media.module';
 import { MediaService } from '../src/modules/media/media.service';
 import { MediaRepository } from '../src/modules/media/media.repository';
-import { CloudinaryTransport } from '../src/modules/media/cloudinary.transport';
+import { NeonStorageTransport } from '../src/modules/media/neon-storage.transport';
 import { JwtAuthGuard } from '../src/modules/auth/guards/jwt-auth.guard';
 import { OriginGuard } from '../src/common/guards/origin.guard';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
@@ -38,7 +37,7 @@ describe('Secure media on isolated PostgreSQL', () => {
   let b: Owner;
   let png: Buffer;
   const origin = 'http://localhost:3000';
-  const upload = jest.fn<Promise<UploadedImage>, [string, Buffer]>();
+  const upload = jest.fn<Promise<void>, [string, Buffer]>();
   const destroy = jest.fn<Promise<void>, []>();
   const configured = jest.fn<void, []>();
   async function owner(): Promise<Owner> {
@@ -110,13 +109,13 @@ describe('Secure media on isolated PostgreSQL', () => {
         { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
       ],
     })
-      .overrideProvider(CloudinaryTransport)
+      .overrideProvider(NeonStorageTransport)
       .useValue({
         configured,
         upload,
         destroy,
-        url: (id: string, version: number) =>
-          `https://res.cloudinary.com/fixture/image/upload/v${version}/${id}.webp`,
+        url: (id: string) =>
+          `https://br-fixture.storage.c-7.eu-central-1.aws.neon.tech/nexora-public/${id}.webp`,
       })
       .compile();
     app = module.createNestApplication({ logger: false });
@@ -143,19 +142,7 @@ describe('Secure media on isolated PostgreSQL', () => {
     upload.mockReset();
     destroy.mockReset();
     destroy.mockResolvedValue(undefined);
-    upload.mockImplementation((id: string, buffer: Buffer) =>
-      Promise.resolve({
-        public_id: id,
-        resource_type: 'image',
-        type: 'upload',
-        format: 'webp',
-        asset_id: randomUUID(),
-        bytes: buffer.length,
-        width: 10,
-        height: 8,
-        version: 123,
-      }),
-    );
+    upload.mockResolvedValue(undefined);
     a = await owner();
     b = await owner();
   });
@@ -220,21 +207,10 @@ describe('Secure media on isolated PostgreSQL', () => {
     await post(a).attach('file', png, 'photo.png').expect(500);
     expect(await prisma.media.count({ where: { businessId: a.id } })).toBe(0);
   });
-  it('does not accept a mismatched provider identity and retains cleanup work', async () => {
-    upload.mockResolvedValue({ public_id: 'foreign' } as UploadedImage);
-    await post(a).attach('file', png, 'photo.png').expect(503);
-    expect(
-      await prisma.media.count({
-        where: { businessId: a.id, status: 'DELETING' },
-      }),
-    ).toBe(1);
-    expect(
-      payload<unknown>(
-        await request(app.getHttpServer() as Server)
-          .get(path(a))
-          .set('Cookie', a.cookies),
-      ),
-    ).toEqual([]);
+  it('retains cleanup work when object storage upload fails', async () => {
+    upload.mockRejectedValue(new Error('Neon unavailable'));
+    await post(a).attach('file', png, 'photo.png').expect(500);
+    expect(await prisma.media.count({ where: { businessId: a.id, status: 'DELETING' } })).toBe(1);
   });
   it('blocks arbitrary and foreign image URLs on product/service/branding/section writes', async () => {
     const image = await asset(b);

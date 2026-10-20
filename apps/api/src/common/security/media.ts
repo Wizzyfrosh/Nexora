@@ -34,11 +34,12 @@ export async function assertMediaOwnership(
     );
 }
 // Section schemas remain limited by website-input; media-bearing keys and any
-// Cloudinary URL must use this tenant's registry. Outbound contact links are not media.
+// verified storage URL must use this tenant's registry. Outbound contact links are not media.
 export function sectionMediaUrls(value: unknown, media = false): string[] {
   if (typeof value === 'string')
     return (media && /^(?:https?:|\/|data:)/i.test(value)) ||
-      value.includes('res.cloudinary.com/')
+      value.includes('res.cloudinary.com/') ||
+      value.includes('.aws.neon.tech/nexora-public/')
       ? [value]
       : [];
   if (!value || typeof value !== 'object') return [];

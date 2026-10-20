@@ -81,6 +81,13 @@ export const configuration = () => ({
     webhookSecret: process.env.PAYSTACK_WEBHOOK_SECRET || '',
   },
 
+  storage: {
+    endpoint: process.env.AWS_ENDPOINT_URL_S3 || '',
+    region: process.env.AWS_REGION || '',
+    bucket: process.env.NEON_STORAGE_BUCKET || '',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
     apiKey: process.env.CLOUDINARY_API_KEY || '',
