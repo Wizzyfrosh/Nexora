@@ -50,6 +50,16 @@ export function validateEnvironment(
       'Configured SMTP requires credentials, EMAIL_FROM and an independent 64-hex EMAIL_TOKEN_KEY',
     );
   }
+  if (env.PUBLIC_PUBLISHING_ENABLED === 'true') {
+    const endpoint = text(env.AWS_ENDPOINT_URL_S3);
+    if (
+      !/^https:\/\/[a-z0-9-]+\.storage\.c-[0-9]+\.[a-z0-9-]+\.aws\.neon\.tech\/?$/.test(endpoint) ||
+      text(env.NEON_STORAGE_BUCKET) !== 'nexora-public' ||
+      !text(env.AWS_REGION) ||
+      !text(env.AWS_ACCESS_KEY_ID) ||
+      !text(env.AWS_SECRET_ACCESS_KEY)
+    ) throw new Error('Public publishing requires Neon Object Storage configuration');
+  }
   try {
     const database = new URL(text(env.DATABASE_URL));
     if (
