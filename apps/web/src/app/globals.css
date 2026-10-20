@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Manual preference controls Tailwind dark: utilities (not OS media alone). */
+@custom-variant dark (&:where(.dark, .dark *));
 
 .nexora-brand {
   display: inline-flex;
@@ -108,30 +110,23 @@
 }
 
 .dark {
-  /* Dark mode tokens */
-  --primary: 246 80% 65%;
-  --primary-foreground: 0 0% 100%;
-
-  --secondary: 217 33% 17%;
-  --secondary-foreground: 210 40% 98%;
-
-  --accent: 172 66% 50%;
-  --accent-foreground: 0 0% 100%;
-
-  --background: 222 47% 6%;
-  --foreground: 210 40% 98%;
-
-  --muted: 217 33% 15%;
-  --muted-foreground: 215 20% 60%;
-
-  --card: 222 47% 8%;
-  --card-foreground: 210 40% 98%;
-
-  --border: 217 33% 17%;
-  --input: 217 33% 17%;
-  --ring: 246 80% 65%;
-
-  --destructive: 0 62% 50%;
+  /* Legible high-contrast surfaces. Foreground on brand buttons is dark ink. */
+  --primary: 272 77% 78%;
+  --primary-foreground: 270 42% 13%;
+  --secondary: 266 24% 21%;
+  --secondary-foreground: 270 25% 96%;
+  --accent: 271 29% 26%;
+  --accent-foreground: 270 36% 96%;
+  --background: 264 32% 10%;
+  --foreground: 270 28% 96%;
+  --muted: 263 25% 20%;
+  --muted-foreground: 270 18% 76%;
+  --card: 263 26% 15%;
+  --card-foreground: 270 29% 97%;
+  --border: 266 23% 31%;
+  --input: 266 23% 32%;
+  --ring: 275 76% 77%;
+  --destructive: 0 65% 42%;
   --destructive-foreground: 0 0% 100%;
 }
 
