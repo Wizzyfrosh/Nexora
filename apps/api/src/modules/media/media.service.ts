@@ -5,7 +5,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { MEDIA_MAX_BYTES } from '@nexora/shared-types';
-import { CloudinaryTransport } from './cloudinary.transport';
+import { NeonStorageTransport } from './neon-storage.transport';
 import { MediaRepository } from './media.repository';
 import { sanitizeImage } from './media-image';
 
@@ -16,7 +16,7 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
   private activeUploads = 0;
   constructor(
     private readonly repo: MediaRepository,
-    private readonly transport: CloudinaryTransport,
+    private readonly transport: NeonStorageTransport,
   ) {}
   onModuleInit() {
     this.timer = setInterval(() => {
@@ -50,29 +50,14 @@ export class MediaService implements OnModuleInit, OnModuleDestroy {
     const image = await sanitizeImage(buffer, mime);
     const intent = await this.repo.reserve(businessId);
     try {
-      const result = await this.transport.upload(intent.publicId, image.data);
-      if (
-        result.public_id !== intent.publicId ||
-        result.resource_type !== 'image' ||
-        result.type !== 'upload' ||
-        result.format !== 'webp' ||
-        !/^[a-zA-Z0-9_-]{1,128}$/.test(result.asset_id || '') ||
-        !Number.isSafeInteger(result.version) ||
-        result.version <= 0 ||
-        result.bytes !== image.data.length ||
-        result.bytes > MEDIA_MAX_BYTES ||
-        result.width !== image.width ||
-        result.height !== image.height
-      )
-        throw new ServiceUnavailableException(
-          'Media storage returned an invalid asset',
-        );
+      await this.transport.upload(intent.publicId, image.data);
+
       return await this.repo.ready(intent.id, businessId, {
-        url: this.transport.url(intent.publicId, result.version),
-        sizeBytes: result.bytes,
-        width: result.width,
-        height: result.height,
-        assetId: result.asset_id,
+        url: this.transport.url(intent.publicId),
+        sizeBytes: image.data.length,
+        width: image.width,
+        height: image.height,
+        assetId: intent.id,
       });
     } catch (error) {
       await this.repo.fail(intent.id); // Durable cleanup covers ambiguous remote acceptance.
