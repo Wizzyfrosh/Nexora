@@ -721,3 +721,20 @@
 .dark .workspace-notice{background:#352b20;border-color:#765c38;color:#ffe7c4}
 .dark .workspace-home-link{border-color:#3a3048;color:#d7b4ea}
 .dark .workspace-account button{color:#d7c4e8}
+
+/* Explicit dark-mode component contrast corrections */
+.dark .workspace-stat>div,.dark .workspace-stat small,.dark .workspace-card-heading>span,.dark .workspace-step small,.dark .workspace-release>small{color:#d5c5e4}
+.dark .workspace-page-heading h1,.dark .workspace-stat strong,.dark .workspace-card-heading h2,.dark .workspace-welcome h2,.dark .workspace-step h2{color:#f7efff}
+.dark .workspace-welcome-art{background:#453154;color:#ead0ff}
+.dark .workspace-welcome-art span,.dark .workspace-welcome-art small{color:#f1ddff}
+.dark .workspace-welcome a,.dark .workspace-release>a{color:#edd0ff}
+.dark .workspace-empty-chart i{background:#72548e}
+.dark .workspace-empty-chart i:nth-child(2n){background:#9670b2}
+.dark .workspace-topbar>span:first-child>span{color:#a994bf}
+.dark .workspace-sidebar .nexora-brand{color:#f8f0ff}
+.dark .workspace-shell :is(input,textarea,select){color:hsl(var(--foreground));background-color:hsl(var(--card));border-color:hsl(var(--border))}
+.dark .workspace-shell :is(input,textarea)::placeholder{color:#c4b5d3}
+.dark .workspace-shell .text-slate-600,.dark .workspace-shell .text-slate-500{color:#d5c5e4}
+.dark .workspace-shell .bg-white{background-color:#251e33}
+.dark .workspace-shell .bg-slate-50{background-color:#2a2238}
+.dark .workspace-shell .border-slate-200{border-color:#4b395b}
