@@ -1,0 +1,87 @@
+name: Nexora Manual Neon Schema Release
+
+# Deliberately not triggered by push, pull request, schedule or a production deploy.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Which isolated Neon branch/database?"
+        required: true
+        type: choice
+        options:
+          - rehearsal
+          - production
+        default: rehearsal
+      operation:
+        description: "status reads migration state; apply modifies the selected database"
+        required: true
+        type: choice
+        options:
+          - status
+          - apply
+        default: status
+      confirmation:
+        description: "For apply, type APPLY_NEXORA_REHEARSAL_SCHEMA or APPLY_NEXORA_PRODUCTION_SCHEMA"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexora-neon-schema-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: "Neon ${{ inputs.target }}: ${{ inputs.operation }}"
+    # This action must always use the current reviewed default branch.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: ${{ inputs.target == 'production' && 'nexora-production-db' || 'nexora-migration-rehearsal' }}
+    env:
+      NODE_ENV: production
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      NEXORA_DB_TARGET: ${{ inputs.target }}
+      NEXORA_MIGRATE_MODE: ${{ inputs.operation }}
+      NEXORA_MIGRATE_CONFIRM: ${{ inputs.confirmation }}
+      # Require explicit authorization in the protected GitHub environment.
+      NEXORA_MIGRATE_APPROVED: ${{ vars.NEXORA_MIGRATE_APPROVED }}
+      PAYSTACK_LIVE_ENABLED: 'false'
+      PUBLIC_PUBLISHING_ENABLED: 'false'
+    steps:
+      - name: Checkout approved main
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Check migration target before installing or contacting database
+        run: node scripts/guard-db-release.mjs
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Review Prisma migration state (pending migrations may exit 1)
+        if: inputs.operation == 'status'
+        run: |
+          set +e
+          npm exec --workspace api -- prisma migrate status --schema prisma/schema.prisma
+          result=$?
+          echo "Prisma migrate status exit: $result"
+          # Pending migrations legitimately report a nonzero status. Never auto-apply.
+          if [ "$result" -ne 0 ]; then
+            echo "Review the migration list above; apply requires a separate, approved dispatch."
+          fi
+      - name: Apply reviewed Prisma migration files
+        if: inputs.operation == 'apply'
+        run: npm exec --workspace api -- prisma migrate deploy --schema prisma/schema.prisma
+      - name: Verify migration ledger after apply
+        if: inputs.operation == 'apply'
+        run: npm exec --workspace api -- prisma migrate status --schema prisma/schema.prisma
+      - name: Verify schema matches Prisma after apply
+        if: inputs.operation == 'apply'
+        run: npm exec --workspace api -- prisma migrate diff --from-url "$DIRECT_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
