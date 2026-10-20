@@ -18,9 +18,9 @@ const valid = (v: string | null): v is ThemePreference =>
 function getStoredPreference(): ThemePreference {
   try {
     const value = localStorage.getItem(KEY);
-    return valid(value) ? value : "system";
+    return valid(value) ? value : "light";
   } catch {
-    return "system";
+    return "light";
   }
 }
 
@@ -39,7 +39,7 @@ function applyTheme(preference: ThemePreference): ResolvedTheme {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Match server HTML on hydration. The tiny inline bootstrap script applies the
   // saved theme before the browser paints, avoiding a light-mode flash.
-  const [preference, setPreferenceState] = useState<ThemePreference>("system");
+  const [preference, setPreferenceState] = useState<ThemePreference>("light");
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light");
 
   useEffect(() => {
