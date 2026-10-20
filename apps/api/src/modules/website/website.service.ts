@@ -101,7 +101,8 @@ export class WebsiteService {
         darkColors: stored?.darkColors ?? {},
         typography: stored?.typography ?? {},
         spacing: stored?.spacing ?? {},
-        previewImageUrl: stored?.previewImageUrl ?? null,
+        // The seeded placeholders repeat one generic image: do not misrepresent them as theme screenshots.
+        previewImageUrl: null,
       };
     });
   }
