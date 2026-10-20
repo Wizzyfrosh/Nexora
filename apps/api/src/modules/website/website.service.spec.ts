@@ -9,12 +9,16 @@ describe('WebsiteService security', () => {
     createDefaultWebsite: jest.fn(),
     replaceSections: jest.fn(),
     getThemes: jest.fn(),
+    getSubscriptionForBusiness: jest.fn(),
   };
   const service = new WebsiteService(
     repo as unknown as WebsiteRepository,
     {} as BusinessService,
   );
-  beforeEach(() => jest.resetAllMocks());
+  beforeEach(() => {
+    jest.resetAllMocks();
+    repo.getSubscriptionForBusiness.mockResolvedValue({ plan: 'TRIAL', status: 'TRIAL' });
+  });
   it('delegates valid complete saves to the tenant-scoped transaction', async () => {
     repo.findByBusinessId.mockResolvedValue({ id: 'site-a' });
     repo.replaceSections.mockResolvedValue([]);
