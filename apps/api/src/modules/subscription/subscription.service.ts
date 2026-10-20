@@ -273,6 +273,26 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  async billingHistory(userId: string, businessId: string) {
+    const business = await this.businessService.getBusinessProfile(businessId);
+    if (!business || business.ownerId !== userId || business.deletedAt)
+      throw new NotFoundException('Business not found');
+    const records = await this.subRepo.billingHistory(businessId);
+    // Owner-only, bounded projection: no provider tokens, raw metadata or card data.
+    return records.map((payment) => ({
+      reference: payment.paystackReference,
+      status: payment.paystackStatus,
+      amountNgn: payment.amountNgn,
+      currency: payment.currency,
+      plan: payment.purchasedPlan,
+      paidAt: payment.paidAt?.toISOString() ?? null,
+      createdAt: payment.createdAt.toISOString(),
+      coverageStart: payment.coverageStart?.toISOString() ?? null,
+      coverageEnd: payment.coverageEnd?.toISOString() ?? null,
+      verified: Boolean(payment.fulfilledAt),
+    }));
+  }
+
   async billingStatus(userId: string, businessId: string) {
     const business = await this.businessService.getBusinessProfile(businessId);
     if (!business || business.ownerId !== userId || business.deletedAt)
