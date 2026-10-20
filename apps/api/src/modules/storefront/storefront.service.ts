@@ -9,6 +9,7 @@ import { Prisma } from '@prisma/client';
 import {
   Storefront,
   RELEASED_THEMES,
+  isTemplateEntitled,
   releasedSections,
   PublicationState,
 } from '@nexora/shared-types';
@@ -56,6 +57,8 @@ export class StorefrontService {
     } catch {
       reasons.push('An active trial or paid subscription is required');
     }
+    if (b.website && !isTemplateEntitled(b.website.theme, b.subscription))
+      reasons.push('An active Premium plan is required for the selected website design');
     try {
       if (
         !b.website ||
@@ -158,6 +161,8 @@ export class StorefrontService {
           throw new NotFoundException('Business website is unavailable');
         if (!preview) {
           assertPublicAccess(b);
+          if (!b.website || !isTemplateEntitled(b.website.theme, b.subscription))
+            throw new NotFoundException('Business website is unavailable');
           if (!b.owner.emailVerified)
             throw new NotFoundException('Business website is unavailable');
         }
@@ -302,6 +307,7 @@ export class StorefrontService {
       take: 100,
       select: {
         slug: true,
+        subscription: { select: { plan: true, status: true, currentPeriodEnd: true } },
         website: {
           select: {
             theme: true,
@@ -326,6 +332,7 @@ export class StorefrontService {
         if (
           !b.website ||
           b.website.deletedAt ||
+          !isTemplateEntitled(b.website.theme, b.subscription, now) ||
           !RELEASED_THEMES.includes(
             b.website.theme as (typeof RELEASED_THEMES)[number],
           )
