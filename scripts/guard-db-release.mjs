@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 
 export const endpoints = Object.freeze({
-  rehearsal: 'ep-proud-fog-ban33iio.c-8.eu-central-1.aws.neon.tech',
+  rehearsal: 'ep-lively-rice-bawbyzik.c-8.eu-central-1.aws.neon.tech',
   production: 'ep-wild-dew-baff7imw.c-8.eu-central-1.aws.neon.tech',
 });
 export const applyConfirmation = Object.freeze({
