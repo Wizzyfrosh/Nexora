@@ -306,3 +306,13 @@
     font-size: 9px;
   }
 }
+
+.dark .auth-screen{background:#14111f;color:#f6edfd}
+.dark .auth-story{background:linear-gradient(125deg,#2e2140,#1a172a)}
+.dark .auth-story p,.dark .auth-story>small,.dark .auth-eyebrow{color:#d1bddf}
+.dark .auth-story-card{background:#292039;border-color:#483957;color:#f8ebff}
+.dark .auth-story-card>strong{color:#e0c1f3}
+.dark .auth-form-side{background:#14111f;color:#f6edfd}
+.dark .auth-back,.dark .auth-switch,.dark .auth-password-hint,.dark .auth-footer,.dark .auth-reassurance{color:#cbb8dc}
+.dark .auth-screen input{background:#251c32;color:#f8f1ff;border-color:#4c3b5e}
+.dark .auth-screen input::placeholder{color:#b4a4c5}
