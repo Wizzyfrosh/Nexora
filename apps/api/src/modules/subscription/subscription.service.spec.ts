@@ -61,7 +61,7 @@ describe('Subscription purchase policy', () => {
     provider = {
       verifyTransaction: jest.fn().mockResolvedValue({ data: charge }),
       initializeTransaction: jest.fn(),
-      assertTestCheckout: jest.fn(),
+      assertCheckoutEnabled: jest.fn(),
       validateWebhookSignature: jest.fn().mockReturnValue(true),
     };
     service = new SubscriptionService(
@@ -95,7 +95,7 @@ describe('Subscription purchase policy', () => {
   it('permits a cancellation request even when new checkout is disabled', async () => {
     repo.requestCancellation = jest.fn().mockResolvedValue({ status: 'PENDING' });
     await expect(service.cancelRenewal('owner', 'business')).resolves.toEqual({ status: 'PENDING' });
-    expect(provider.assertTestCheckout).not.toHaveBeenCalled();
+    expect(provider.assertCheckoutEnabled).not.toHaveBeenCalled();
   });
   it('checks ownership before any provider request', async () => {
     await expect(service.verifyPayment('stranger', ref)).rejects.toThrow(
@@ -165,6 +165,14 @@ describe('Subscription purchase policy', () => {
     expect(repo.createPayment.mock.invocationCallOrder[0]).toBeLessThan(
       provider.initializeTransaction.mock.invocationCallOrder[0],
     );
+  });
+  it('blocks direct Premium checkout before any payment row or provider call', async () => {
+    await expect(service.initiateSubscription('owner', 'business', {
+      plan: SubscriptionPlan.PREMIUM,
+      callbackUrl: 'http://localhost:3000/dashboard/billing',
+    })).rejects.toThrow('Premium checkout is not released');
+    expect(repo.createPayment).not.toHaveBeenCalled();
+    expect(provider.initializeTransaction).not.toHaveBeenCalled();
   });
   it('rejects trial checkout', async () => {
     await expect(

@@ -42,15 +42,31 @@ export interface PaystackSubscription {
 @Injectable()
 export class PaystackService {
   private readonly secretKey: string;
+  private readonly liveEnabled: boolean;
+  private readonly nodeEnv: string;
+  private readonly frontendUrl: string;
   constructor(config: ConfigService) {
     this.secretKey = config.get<string>('paystack.secretKey') || '';
+    this.liveEnabled = config.get<boolean>('paystack.liveEnabled') === true;
+    this.nodeEnv = config.get<string>('nodeEnv') || 'development';
+    this.frontendUrl = config.get<string>('frontendUrl') || '';
   }
 
-  assertTestCheckout() {
-    // Live checkout stays closed until recurring lifecycle/refund/reconciliation gates pass.
-    if (!this.secretKey.startsWith('sk_test_')) {
+  expectedDomain(): 'test' | 'live' {
+    if (this.secretKey.startsWith('sk_test_')) return 'test';
+    if (this.secretKey.startsWith('sk_live_')) return 'live';
+    throw new ServiceUnavailableException('Paystack is not configured');
+  }
+
+  assertCheckoutEnabled() {
+    if (
+      this.expectedDomain() === 'live' &&
+      (this.nodeEnv !== 'production' ||
+        this.frontendUrl !== 'https://nexora.froshcodeorbit.site' ||
+        !this.liveEnabled)
+    ) {
       throw new ServiceUnavailableException(
-        'Only Paystack test checkout is enabled',
+        'Live checkout is disabled pending launch approval',
       );
     }
   }
@@ -99,7 +115,7 @@ export class PaystackService {
     reference: string,
     metadata: { businessId: string; planName: string },
   ) {
-    this.assertTestCheckout();
+    this.assertCheckoutEnabled();
     const result = await this.request<{
       reference: string;
       authorization_url: string;

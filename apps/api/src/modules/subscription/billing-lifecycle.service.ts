@@ -59,7 +59,7 @@ export class BillingLifecycleService {
       }
       requireBilling(anchor?.fulfilledAt);
     }
-    await this.repo.linkAndSync(anchor, data);
+    await this.repo.linkAndSync(anchor, data, this.provider.expectedDomain());
     if (event.event === 'subscription.cancel') {
       if (['active', 'attention'].includes(data.status)) {
         requireBilling(data.email_token);

@@ -52,6 +52,33 @@ describe('production configuration', () => {
     };
     expect(validateEnvironment(value)).toBe(value);
   });
+  it('requires a live provider key and approved production origin for live billing', () => {
+    expect(() => validateEnvironment({
+      ...production,
+      PAYSTACK_LIVE_ENABLED: 'true',
+      PAYSTACK_SECRET_KEY: 'sk_test_demo',
+    })).toThrow('live secret key');
+    expect(() => validateEnvironment({
+      ...production,
+      PAYSTACK_LIVE_ENABLED: 'true',
+      PAYSTACK_SECRET_KEY: 'sk_live_demo',
+    })).toThrow('approved Nexora production origin');
+    expect(() => validateEnvironment({
+      ...production,
+      PAYSTACK_LIVE_ENABLED: 'true',
+      PAYSTACK_SECRET_KEY: 'sk_live_demo',
+      FRONTEND_URL: 'https://nexora.froshcodeorbit.site',
+    })).not.toThrow();
+  });
+  it('requires Neon storage, not legacy Cloudinary, before publishing', () => {
+    expect(() => validateEnvironment({
+      ...production,
+      PUBLIC_PUBLISHING_ENABLED: 'true',
+      CLOUDINARY_CLOUD_NAME: 'anything',
+      CLOUDINARY_API_KEY: 'anything',
+      CLOUDINARY_API_SECRET: 'anything',
+    })).toThrow('Neon Object Storage');
+  });
   it('accepts explicit valid settings', () =>
     expect(validateEnvironment(production)).toBe(production));
   it('permits isolated development settings', () =>
