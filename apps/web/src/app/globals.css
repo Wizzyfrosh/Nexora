@@ -305,3 +305,12 @@ body {
   background-size: 200% 100%;
   animation: shimmer 2s linear infinite;
 }
+
+/* Nexora interface dark mode */
+.dark .nexora-brand{color:#f6effe}
+.theme-quick-toggle{display:inline-grid;place-items:center;min-width:38px;min-height:38px;border-radius:10px;border:1px solid hsl(var(--border));color:hsl(var(--foreground));background:hsl(var(--card));cursor:pointer}
+.theme-quick-toggle:focus-visible,.theme-selector button:focus-visible{outline:2px solid #bd91e7;outline-offset:3px}
+.theme-selector{display:flex;flex-wrap:wrap;gap:10px}
+.theme-selector button{display:flex;align-items:center;gap:8px;border:1px solid hsl(var(--border));border-radius:12px;padding:12px 16px;background:hsl(var(--card));color:hsl(var(--foreground));cursor:pointer}
+.theme-selector button.is-active{border-color:#a36ada;background:hsl(var(--primary)/.12);color:hsl(var(--foreground))}
+.dark{--sidebar-bg:263 28% 11%;--sidebar-foreground:270 20% 94%;--sidebar-muted:263 24% 17%}
