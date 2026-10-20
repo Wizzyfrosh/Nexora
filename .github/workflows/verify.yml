@@ -70,3 +70,9 @@ jobs:
       - run: npm run build --workspace api
       - name: Compiled analytics worker on disposable PostgreSQL
         run: npm run analytics:drain --workspace api
+      - name: Compiled billing recovery worker on disposable PostgreSQL
+        env:
+          BILLING_WORKER_MODE: scheduled
+          PAYSTACK_SECRET_KEY: sk_test_ci_fixture_only
+        run: npm run billing:recover --workspace api
+
