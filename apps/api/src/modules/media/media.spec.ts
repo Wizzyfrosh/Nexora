@@ -1,11 +1,7 @@
 import sharp from 'sharp';
-import { createHash } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { sanitizeImage } from './media-image';
-import {
-  CloudinaryTransport,
-  cloudinarySignature,
-} from './cloudinary.transport';
+import { NeonStorageTransport } from './neon-storage.transport';
 import { sectionMediaUrls } from '../../common/security/media';
 import { MediaCapacityInterceptor } from './media.controller';
 import { Subject } from 'rxjs';
@@ -49,22 +45,22 @@ describe('Media file boundary', () => {
       .toBuffer();
     await expect(sanitizeImage(large, 'image/png')).rejects.toThrow();
   });
-  it('signs sorted server-defined parameters using SHA256', () => {
-    expect(
-      cloudinarySignature(
-        { timestamp: '1', public_id: 'nexora/a/b' },
-        'secret',
-      ),
-    ).toBe(
-      createHash('sha256')
-        .update('public_id=nexora/a/b&timestamp=1secret')
-        .digest('hex'),
-    );
-  });
-  it('fails closed without storage credentials', () => {
+  it('fails closed without Neon storage credentials', () => {
     expect(() =>
-      new CloudinaryTransport(new ConfigService()).configured(),
+      new NeonStorageTransport(new ConfigService()).configured(),
     ).toThrow('not configured');
+  });
+  it('accepts only configured Neon branch endpoints and outputs public WebP URL', () => {
+    const transport = new NeonStorageTransport(new ConfigService({
+      storage: {
+        endpoint: 'https://br-example.storage.c-7.eu-central-1.aws.neon.tech',
+        bucket: 'nexora-public', region: 'eu-central-1',
+        accessKeyId: 'fixture', secretAccessKey: 'fixture-secret',
+      },
+    }));
+    expect(transport.url('nexora/business/asset')).toBe(
+      'https://br-example.storage.c-7.eu-central-1.aws.neon.tech/nexora-public/nexora/business/asset.webp',
+    );
   });
   it('finds nested media while leaving outbound contact links alone', () => {
     expect(
@@ -88,31 +84,24 @@ describe('Media file boundary', () => {
     ).not.toThrow();
     two.unsubscribe();
   });
-  it('sends signed server-defined fields only to the fixed provider host', async () => {
-    const mock = jest
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(
-        new Response(JSON.stringify({ result: 'ok' }), { status: 200 }),
-      );
+  it('signs a direct PUT to Neon without leaking credentials', async () => {
+    const mock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, { status: 200 }),
+    );
     try {
-      const transport = new CloudinaryTransport(
-        new ConfigService({
-          cloudinary: {
-            cloudName: 'fixture',
-            apiKey: '123',
-            apiSecret: 'private-fixture',
-          },
-        }),
-      );
-      await transport.destroy('nexora/a/b');
+      const transport = new NeonStorageTransport(new ConfigService({
+        storage: {
+          endpoint: 'https://br-example.storage.c-7.eu-central-1.aws.neon.tech',
+          bucket: 'nexora-public', region: 'eu-central-1',
+          accessKeyId: 'fixture', secretAccessKey: 'fixture-secret',
+        },
+      }));
+      await transport.upload('nexora/business/asset', Buffer.from('fake'));
       const [url, init] = mock.mock.calls[0];
-      expect(url).toBe('https://api.cloudinary.com/v1_1/fixture/image/destroy');
+      expect(String(url)).toContain('/nexora-public/nexora/business/asset.webp');
       expect(init?.redirect).toBe('error');
-      const fields = init?.body as FormData;
-      expect(fields.get('invalidate')).toBe('true');
-      expect(fields.get('public_id')).toBe('nexora/a/b');
-      expect(fields.get('signature')).toMatch(/^[a-f0-9]{64}$/);
-      expect([...fields.values()]).not.toContain('private-fixture');
+      expect((init?.headers as Record<string,string>).authorization).toContain('AWS4-HMAC-SHA256');
+      expect(JSON.stringify(init)).not.toContain('fixture-secret');
     } finally {
       mock.mockRestore();
     }
