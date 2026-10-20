@@ -18,6 +18,19 @@ import {
 export class SubscriptionRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  billingHistory(businessId: string) {
+    return this.prisma.payment.findMany({
+      where: { subscription: { businessId, deletedAt: null }, deletedAt: null },
+      select: {
+        paystackReference: true, paystackStatus: true, amountNgn: true,
+        currency: true, purchasedPlan: true, paidAt: true,
+        coverageStart: true, coverageEnd: true, createdAt: true, fulfilledAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+  }
+
   findByBusinessId(businessId: string) {
     return this.prisma.subscription.findUnique({ where: { businessId } });
   }
