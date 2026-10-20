@@ -1,5 +1,6 @@
 import { validateSections } from './website-input';
 import { validateAppearance } from './appearance-input';
+import { isTemplateEntitled } from '@nexora/shared-types';
 import {
   Injectable,
   NotFoundException,
@@ -65,6 +66,9 @@ export class WebsiteService {
   async getPublicWebsiteConfig(businessId: string) {
     const website = await this.websiteRepo.findByBusinessId(businessId);
     if (!website || website.deletedAt)
+      throw new NotFoundException('Website is unavailable');
+    const subscription = await this.websiteRepo.getSubscriptionForBusiness(businessId);
+    if (!isTemplateEntitled(website.theme, subscription))
       throw new NotFoundException('Website is unavailable');
     validateAppearance(website);
     validateSections(website.sections.filter((s) => !s.deletedAt));
