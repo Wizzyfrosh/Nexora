@@ -50,6 +50,12 @@ export function validateEnvironment(
       'Configured SMTP requires credentials, EMAIL_FROM and an independent 64-hex EMAIL_TOKEN_KEY',
     );
   }
+  if (env.PAYSTACK_LIVE_ENABLED === 'true') {
+    if (!text(env.PAYSTACK_SECRET_KEY).startsWith('sk_live_'))
+      throw new Error('Live checkout requires a Paystack live secret key');
+    if (text(env.FRONTEND_URL) !== 'https://nexora.froshcodeorbit.site')
+      throw new Error('Live checkout requires the approved Nexora production origin');
+  }
   if (env.PUBLIC_PUBLISHING_ENABLED === 'true') {
     const endpoint = text(env.AWS_ENDPOINT_URL_S3);
     if (
