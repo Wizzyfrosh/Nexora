@@ -21,6 +21,10 @@ export class WebsiteRepository {
     });
   }
 
+  getSubscriptionForBusiness(businessId: string) {
+    return this.prisma.subscription.findUnique({ where: { businessId } });
+  }
+
   async createDefaultWebsite(businessId: string, theme: string = 'DEFAULT') {
     return this.prisma.website.create({
       data: {
