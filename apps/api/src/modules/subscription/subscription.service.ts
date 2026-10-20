@@ -2,6 +2,7 @@ import {
   Injectable,
   Logger,
   BadRequestException,
+  ServiceUnavailableException,
   NotFoundException,
   OnModuleInit,
   OnModuleDestroy,
@@ -53,6 +54,9 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException('Business not found');
     if (![SubscriptionPlan.BASIC, SubscriptionPlan.PREMIUM].includes(dto.plan))
       throw new BadRequestException('Unsupported plan');
+    // The frontend cannot be the sole enforcement of unreleased plan sales.
+    if (dto.plan === SubscriptionPlan.PREMIUM)
+      throw new ServiceUnavailableException('Premium checkout is not released');
     const user = await this.authRepo.findUserById(userId);
     const sub = await this.subRepo.findByBusinessId(businessId);
     if (!user || !sub || sub.deletedAt)
@@ -100,7 +104,7 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
     ) {
       throw new BadRequestException('Invalid callback URL');
     }
-    this.paystackService.assertTestCheckout();
+    this.paystackService.assertCheckoutEnabled();
     const reference = 'nexora-' + randomUUID();
     // Snapshot before contacting provider. A timeout can still leave a recoverable charge.
     await this.subRepo.createPayment({
