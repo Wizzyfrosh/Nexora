@@ -316,3 +316,8 @@
 .dark .auth-back,.dark .auth-switch,.dark .auth-password-hint,.dark .auth-footer,.dark .auth-reassurance{color:#cbb8dc}
 .dark .auth-screen input{background:#251c32;color:#f8f1ff;border-color:#4c3b5e}
 .dark .auth-screen input::placeholder{color:#b4a4c5}
+
+.dark .auth-form-container h1,.dark .auth-story h2{color:#f7eeff}
+.dark .auth-form-container>p,.dark .auth-form-container label,.dark .auth-switch,.dark .auth-switch a{color:#e0cee9}
+.dark .auth-screen .auth-form-side{background:#191422}
+.dark .auth-screen .auth-error{background:#451f30;color:#ffe4ea;border-color:#9b5169}
