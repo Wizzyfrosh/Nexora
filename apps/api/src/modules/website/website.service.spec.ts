@@ -61,6 +61,11 @@ describe('WebsiteService security', () => {
     );
     expect(repo.createDefaultWebsite).not.toHaveBeenCalled();
   });
+  it('rejects legacy public theme endpoint when the premium entitlement has ended', async () => {
+    repo.findByBusinessId.mockResolvedValue({ theme: 'LUXURY_GOLD', deletedAt: null });
+    repo.getSubscriptionForBusiness.mockResolvedValue({ plan: 'BASIC', status: 'ACTIVE' });
+    await expect(service.getPublicWebsiteConfig('a')).rejects.toThrow(NotFoundException);
+  });
   it('public configuration omits private fields and deleted sections', async () => {
     repo.findByBusinessId.mockResolvedValue({
       id: 'private',
