@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/contexts/AuthContext";
 import { SubscriptionService } from "@/lib/api/subscription";
 import { BillingStatus, SubscriptionPlan } from "@nexora/shared-types";
+import { BillingHistory } from "@/components/billing-history";
 
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Please try again.";
@@ -332,6 +333,7 @@ function BillingContent() {
           </Card>
         ))}
       </div>
+      {businessId && <BillingHistory businessId={businessId} />}
     </div>
   );
 }
