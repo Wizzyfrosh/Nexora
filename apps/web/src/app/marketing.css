@@ -2028,3 +2028,22 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Dark chrome only. Concept previews, photos and illustrations retain their designed colors. */
+.dark .marketing{--ink:#f6edff;--purple:#d6adff;--soft-ink:#d5c8e2;background:#171320;color:var(--ink)}
+.dark .marketing-nav{background:#20192df2;border-color:#453653}
+.dark .marketing-nav .nexora-brand{color:#f6edff}
+.dark .marketing .desktop-nav a,.dark .marketing .nav-signin{color:#e9ddef}
+.dark .marketing .hero-section{background:linear-gradient(120deg,#21182f,#2d2040)}
+.dark .marketing .marketing-section,.dark .marketing .templates-section{background:#171320}
+.dark .marketing .section-heading h2,.dark .marketing .section-heading p,.dark .marketing .hero-copy h1,.dark .marketing .hero-copy>p,.dark .marketing .how-copy h2,.dark .marketing .how-copy>p{color:#f6edff}
+.dark .marketing .section-heading p,.dark .marketing .hero-copy>p,.dark .marketing .how-copy>p{color:#d6c9e2}
+.dark .marketing .template-caption h3{color:#f6edff}
+.dark .marketing .template-caption p,.dark .marketing .concept-disclaimer{color:#d6c9e2}
+.dark .marketing .template-caption>a{background:#322440;border-color:#5e486f;color:#e9cbff}
+.dark .marketing .benefit-card h3,.dark .marketing .benefit-card p{color:#33233c}
+.dark .marketing .benefit-card p{color:#63566a}
+.dark .marketing .conversation-banner h2,.dark .marketing .conversation-banner p{color:#fff}
+.dark .marketing .hero-browser,.dark .marketing .template-preview,.dark .marketing .workspace-illustration{color:#382f46}
+.dark .marketing .hero-browser .nexora-brand,.dark .marketing .workspace-illustration .nexora-brand{color:#28183c}
+/* No brightness filters or blanket mockup background overrides. */

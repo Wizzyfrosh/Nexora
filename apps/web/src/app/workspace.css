@@ -703,3 +703,38 @@
     transition: none;
   }
 }
+
+/* Workspace semantic overrides for legacy fixed-light surfaces */
+.dark .workspace-shell{background:#111020;color:#f4f0fa}
+.dark .workspace-sidebar,.dark .workspace-mobile-header{background:#171425;border-color:#30283e}
+.dark .workspace-topbar{background:#1c182b;border-color:#332b40;color:#b9acc9}
+.dark .workspace-business,.dark .workspace-stat,.dark .workspace-panel-card{background:#201b30;border-color:#382e49;color:#f4f0fa}
+.dark .workspace-business>span,.dark .workspace-account>span,.dark .workspace-step-icon{background:#3a294c;color:#ebd0ff}
+.dark .workspace-sidebar nav>a{color:#bdadcf}
+.dark .workspace-sidebar nav>a:hover,.dark .workspace-sidebar nav>a[aria-current=page]{background:#352346;color:#f3deff}
+.dark .workspace-nav-label,.dark .workspace-business small,.dark .workspace-account small,.dark .workspace-page-heading p,.dark .workspace-stat small,.dark .workspace-step p,.dark .workspace-release p,.dark .workspace-welcome p{color:#c5b7d4}
+.dark .workspace-welcome{background:linear-gradient(115deg,#352348,#241e36)}
+.dark .workspace-tag{background:#483557;color:#f4daff}
+.dark .workspace-release{background:#292139}
+.dark .workspace-release h2,.dark .workspace-step h3,.dark .workspace-topbar strong{color:#efe1fd}
+.dark .workspace-step{border-color:#3a3048}
+.dark .workspace-notice{background:#352b20;border-color:#765c38;color:#ffe7c4}
+.dark .workspace-home-link{border-color:#3a3048;color:#d7b4ea}
+.dark .workspace-account button{color:#d7c4e8}
+
+/* Explicit dark-mode component contrast corrections */
+.dark .workspace-stat>div,.dark .workspace-stat small,.dark .workspace-card-heading>span,.dark .workspace-step small,.dark .workspace-release>small{color:#d5c5e4}
+.dark .workspace-page-heading h1,.dark .workspace-stat strong,.dark .workspace-card-heading h2,.dark .workspace-welcome h2,.dark .workspace-step h2{color:#f7efff}
+.dark .workspace-welcome-art{background:#453154;color:#ead0ff}
+.dark .workspace-welcome-art span,.dark .workspace-welcome-art small{color:#f1ddff}
+.dark .workspace-welcome a,.dark .workspace-release>a{color:#edd0ff}
+.dark .workspace-empty-chart i{background:#72548e}
+.dark .workspace-empty-chart i:nth-child(2n){background:#9670b2}
+.dark .workspace-topbar>span:first-child>span{color:#a994bf}
+.dark .workspace-sidebar .nexora-brand{color:#f8f0ff}
+.dark .workspace-shell :is(input,textarea,select){color:hsl(var(--foreground));background-color:hsl(var(--card));border-color:hsl(var(--border))}
+.dark .workspace-shell :is(input,textarea)::placeholder{color:#c4b5d3}
+.dark .workspace-shell .text-slate-600,.dark .workspace-shell .text-slate-500{color:#d5c5e4}
+.dark .workspace-shell .bg-white{background-color:#251e33}
+.dark .workspace-shell .bg-slate-50{background-color:#2a2238}
+.dark .workspace-shell .border-slate-200{border-color:#4b395b}

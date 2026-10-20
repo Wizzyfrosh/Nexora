@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { MediaPicker } from "@/components/media-picker";
+import { ThemeSelector } from "@/components/theme-controls";
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,6 +29,7 @@ import { UpdateBusinessDto, DayOfWeek } from "@nexora/shared-types";
 // ============================================================
 const TABS = [
   { id: "general",  label: "General",       icon: User },
+  { id: "theme", label: "Display", icon: Palette },
   { id: "branding", label: "Branding",      icon: Palette },
   { id: "hours",    label: "Working Hours", icon: Clock },
   { id: "social",   label: "Social Links",  icon: Share2 },
@@ -238,6 +240,7 @@ export default function SettingsPage() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
+              {activeTab === "theme" && <Card><CardHeader><CardTitle>Display preferences</CardTitle><CardDescription>Choose light, dark, or follow your device settings. This preference only affects the Nexora interface.</CardDescription></CardHeader><CardContent><ThemeSelector /></CardContent></Card>}
               {activeTab === "general" && (
                 <GeneralTab
                   name={name} setName={setName}

@@ -20,6 +20,7 @@ import { useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { useAuth } from "@/lib/contexts/AuthContext";
 import { Brand } from "@/components/brand";
+import { ThemeToggle } from "@/components/theme-controls";
 import "../workspace.css";
 
 const links = [
@@ -134,6 +135,7 @@ export default function DashboardLayout({
                 {links.find((l) => l.href === pathname)?.name || "Overview"}
               </strong>
             </span>
+            <ThemeToggle />
             <span className="workspace-status">
               <i /> Your business, in focus
             </span>
