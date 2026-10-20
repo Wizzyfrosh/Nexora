@@ -150,7 +150,7 @@ export class PaystackService {
   }
 
   async cancelSubscription(code: string, token: string) {
-    this.assertTestCheckout();
+    // Cancellation remains available even when NEW checkout is disabled.
     await this.request('/subscription/disable', { code, token }, true);
   }
 
