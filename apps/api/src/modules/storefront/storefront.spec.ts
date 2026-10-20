@@ -8,6 +8,8 @@ import { ConfigService } from '@nestjs/config';
 import {
   releasedSections,
   normalizeStorefrontHandle,
+  isTemplateEntitled,
+  TEMPLATE_CATALOG,
 } from '@nexora/shared-types';
 import { StorefrontService } from './storefront.service';
 import { StorefrontRepository } from './storefront.repository';
@@ -16,6 +18,20 @@ import { SectionsRequest } from '../../common/dto/content.dto';
 import { validateSections } from '../website/website-input';
 
 describe('Released storefront contracts', () => {
+  it('exposes nine distinct, tier-classified storefront designs', () => {
+    expect(TEMPLATE_CATALOG).toHaveLength(9);
+    expect(new Set(TEMPLATE_CATALOG.map(t => t.layout)).size).toBe(9);
+  });
+  it('permits premium layouts only within a paid Premium access period', () => {
+    const end = new Date('2027-02-01T00:00:00Z');
+    const now = new Date('2027-01-01T00:00:00Z');
+    expect(isTemplateEntitled('LUXURY_GOLD', { plan: 'PREMIUM', status: 'ACTIVE', currentPeriodEnd: end }, now)).toBe(true);
+    expect(isTemplateEntitled('LUXURY_GOLD', { plan: 'BASIC', status: 'ACTIVE', currentPeriodEnd: end }, now)).toBe(false);
+    expect(isTemplateEntitled('LUXURY_GOLD', { plan: 'PREMIUM', status: 'ACTIVE', currentPeriodEnd: now }, now)).toBe(false);
+    expect(isTemplateEntitled('LUXURY_GOLD', { plan: 'PREMIUM', status: 'EXPIRED', currentPeriodEnd: end }, now)).toBe(false);
+    expect(isTemplateEntitled('MODERN_WHITE', { plan: 'TRIAL', status: 'TRIAL' }, now)).toBe(true);
+    expect(isTemplateEntitled('FAKE_THEME', null, now)).toBe(false);
+  });
   it('preserves plain section objects through the actual HTTP ValidationPipe', async () => {
     const sections = [
       {
@@ -210,6 +226,13 @@ describe('Storefront publication policy', () => {
       expect(tx.business.findUnique).not.toHaveBeenCalled();
     },
   );
+  it('denies publishing and public reads after a premium plan downgrade', async () => {
+    const { b, service, tx } = setup();
+    b.website.theme = 'LUXURY_GOLD';
+    await expect(service.publish('business', 'owner', true)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.read({ slug: 'business' })).rejects.toBeInstanceOf(NotFoundException);
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
+  });
   it('publishes atomically with an owner audit event', async () => {
     const { service, tx } = setup();
     await expect(service.publish('business', 'owner', true)).resolves.toEqual({
