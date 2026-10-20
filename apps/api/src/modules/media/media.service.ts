@@ -4,7 +4,6 @@ import {
   OnModuleInit,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { MEDIA_MAX_BYTES } from '@nexora/shared-types';
 import { NeonStorageTransport } from './neon-storage.transport';
 import { MediaRepository } from './media.repository';
 import { sanitizeImage } from './media-image';
