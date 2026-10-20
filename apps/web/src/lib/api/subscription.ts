@@ -7,6 +7,7 @@ import {
   SubscriptionPlan,
   BillingStatus,
   CancelRenewalResult,
+  BillingHistoryItem,
 } from "@nexora/shared-types";
 import { apiFetch } from "./client";
 
@@ -21,6 +22,10 @@ export interface VerifyPaymentResponse {
 }
 
 export class SubscriptionService {
+  static history(businessId: string): Promise<BillingHistoryItem[]> {
+    return apiFetch<BillingHistoryItem[]>(`/subscriptions/${businessId}/history`);
+  }
+
   static status(businessId: string): Promise<BillingStatus> {
     return apiFetch(`/subscriptions/${businessId}/status`);
   }
