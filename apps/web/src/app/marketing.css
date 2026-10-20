@@ -2028,3 +2028,13 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Public marketing interface follows Nexora display preference; storefronts are independent. */
+.dark .marketing{--ink:#f6edff;--purple:#cc9aff;--lilac:#241c32;--soft-ink:#c8b8d7;background:#15111f;color:var(--ink)}
+.dark .marketing-nav{background:#1d172bea;border-color:#3a2b4c}
+.dark .marketing .nexora-brand,.dark .marketing h1,.dark .marketing h2,.dark .marketing h3{color:var(--ink)}
+.dark .marketing .desktop-nav a,.dark .marketing .nav-signin{color:#dfceeb}
+.dark .marketing .hero-section,.dark .marketing .marketing-section,.dark .marketing .templates-section{background:#15111f;color:var(--ink)}
+.dark .marketing .benefit-card,.dark .marketing .template-caption,.dark .marketing .template-preview,.dark .marketing .hero-browser,.dark .marketing .workspace-illustration{background-color:#262033;color:var(--ink);border-color:#433450}
+.dark .marketing .section-heading p,.dark .marketing p{color:var(--soft-ink)}
+.dark .marketing .hero-art,.dark .marketing .business-strip,.dark .marketing .conversation-banner{filter:brightness(.91)}
