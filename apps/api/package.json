@@ -7,6 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "analytics:drain": "node dist/src/modules/analytics/analytics.worker-main.js",
+    "billing:recover": "node dist/src/modules/subscription/billing.worker-main.js",
     "build": "nest build",
     "dev": "nest start --watch",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

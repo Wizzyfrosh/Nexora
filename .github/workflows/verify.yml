@@ -8,6 +8,9 @@ permissions:
 jobs:
   build-and-unit-test:
     runs-on: ubuntu-latest
+    env:
+      # Prisma generates a client without opening this database.
+      DIRECT_URL: postgresql://unused:unused@127.0.0.1:5432/nexora_build
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +52,7 @@ jobs:
     env:
       NODE_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/nexora_security
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/nexora_security
       SECURITY_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/nexora_security
     steps:
       - uses: actions/checkout@v4
@@ -66,3 +70,9 @@ jobs:
       - run: npm run build --workspace api
       - name: Compiled analytics worker on disposable PostgreSQL
         run: npm run analytics:drain --workspace api
+      - name: Compiled billing recovery worker on disposable PostgreSQL
+        env:
+          BILLING_WORKER_MODE: scheduled
+          PAYSTACK_SECRET_KEY: sk_test_ci_fixture_only
+        run: npm run billing:recover --workspace api
+

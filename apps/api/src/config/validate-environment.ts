@@ -77,6 +77,19 @@ export function validateEnvironment(
     throw new Error('DATABASE_URL must be a PostgreSQL URL in production');
   }
   try {
+    const database = new URL(text(env.DATABASE_URL));
+    const direct = new URL(text(env.DIRECT_URL));
+    if (!['postgres:', 'postgresql:'].includes(direct.protocol) ||
+        !direct.hostname || direct.hostname.includes('-pooler.') ||
+        database.pathname !== direct.pathname ||
+        database.username !== direct.username ||
+        database.hostname.replace('-pooler.', '.') !== direct.hostname) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error('DIRECT_URL must target the matching non-pooled PostgreSQL database');
+  }
+  try {
     const frontend = new URL(text(env.FRONTEND_URL));
     if (
       frontend.protocol !== 'https:' ||
