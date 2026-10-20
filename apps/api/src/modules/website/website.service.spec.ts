@@ -9,12 +9,16 @@ describe('WebsiteService security', () => {
     createDefaultWebsite: jest.fn(),
     replaceSections: jest.fn(),
     getThemes: jest.fn(),
+    getSubscriptionForBusiness: jest.fn(),
   };
   const service = new WebsiteService(
     repo as unknown as WebsiteRepository,
     {} as BusinessService,
   );
-  beforeEach(() => jest.resetAllMocks());
+  beforeEach(() => {
+    jest.resetAllMocks();
+    repo.getSubscriptionForBusiness.mockResolvedValue({ plan: 'TRIAL', status: 'TRIAL' });
+  });
   it('delegates valid complete saves to the tenant-scoped transaction', async () => {
     repo.findByBusinessId.mockResolvedValue({ id: 'site-a' });
     repo.replaceSections.mockResolvedValue([]);
@@ -56,6 +60,11 @@ describe('WebsiteService security', () => {
       NotFoundException,
     );
     expect(repo.createDefaultWebsite).not.toHaveBeenCalled();
+  });
+  it('rejects legacy public theme endpoint when the premium entitlement has ended', async () => {
+    repo.findByBusinessId.mockResolvedValue({ theme: 'LUXURY_GOLD', deletedAt: null });
+    repo.getSubscriptionForBusiness.mockResolvedValue({ plan: 'BASIC', status: 'ACTIVE' });
+    await expect(service.getPublicWebsiteConfig('a')).rejects.toThrow(NotFoundException);
   });
   it('public configuration omits private fields and deleted sections', async () => {
     repo.findByBusinessId.mockResolvedValue({

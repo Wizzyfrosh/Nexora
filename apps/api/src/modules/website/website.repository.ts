@@ -3,6 +3,7 @@ import { SectionInput } from './website-input';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Prisma } from '@prisma/client';
+import { isTemplateEntitled, templateTier } from '@nexora/shared-types';
 import { assertMediaOwnership, sectionMediaUrls } from '../../common/security/media';
 
 @Injectable()
@@ -18,6 +19,10 @@ export class WebsiteRepository {
         },
       },
     });
+  }
+
+  getSubscriptionForBusiness(businessId: string) {
+    return this.prisma.subscription.findUnique({ where: { businessId } });
   }
 
   async createDefaultWebsite(businessId: string, theme: string = 'DEFAULT') {
@@ -78,13 +83,25 @@ export class WebsiteRepository {
     colorPalette: any,
     typography: any,
   ) {
-    return this.prisma.website.update({
-      where: { businessId },
-      data: {
-        theme,
-        colorPalette,
-        typography,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      // Serialize theme changes with billing and publishing transactions.
+      await tx.subscription.updateMany({
+        where: { businessId, deletedAt: null },
+        data: { updatedAt: new Date() },
+      });
+      const subscription = await tx.subscription.findUnique({
+        where: { businessId },
+      });
+      if (!subscription || subscription.deletedAt || !isTemplateEntitled(theme, subscription))
+        throw new BadRequestException(
+          templateTier(theme) === 'PREMIUM'
+            ? 'An active Premium subscription is required for this template'
+            : 'The selected website template is unavailable',
+        );
+      return tx.website.update({
+        where: { businessId },
+        data: { theme, colorPalette, typography },
+      });
     });
   }
 

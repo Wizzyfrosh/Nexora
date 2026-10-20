@@ -61,7 +61,6 @@ export class BillingLifecycleService {
     }
     await this.repo.linkAndSync(anchor, data);
     if (event.event === 'subscription.cancel') {
-      this.provider.assertTestCheckout();
       if (['active', 'attention'].includes(data.status)) {
         requireBilling(data.email_token);
         await this.provider.cancelSubscription(code, data.email_token);

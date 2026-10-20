@@ -12,3 +12,16 @@ export interface BillingStatus {
 export interface CancelRenewalResult {
   status: "PENDING" | "DONE" | "REVIEW";
 }
+
+export interface BillingHistoryItem {
+  reference: string;
+  status: string;
+  amountNgn: number;
+  currency: string;
+  plan: SubscriptionPlan | null;
+  paidAt: string | null;
+  createdAt: string;
+  coverageStart: string | null;
+  coverageEnd: string | null;
+  verified: boolean;
+}

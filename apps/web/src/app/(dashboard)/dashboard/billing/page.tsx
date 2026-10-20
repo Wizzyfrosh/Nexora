@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/contexts/AuthContext";
 import { SubscriptionService } from "@/lib/api/subscription";
 import { BillingStatus, SubscriptionPlan } from "@nexora/shared-types";
+import { BillingHistory } from "@/components/billing-history";
 
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Please try again.";
@@ -283,7 +284,7 @@ function BillingContent() {
           {
             name: "Premium",
             plan: SubscriptionPlan.PREMIUM,
-            price: "₦120,000",
+            price: "Coming soon",
             copy: "Planned tier. Custom domains, team access and advanced analytics are not yet released.",
           },
         ].map((item) => (
@@ -295,14 +296,12 @@ function BillingContent() {
             <CardContent className="space-y-4">
               <p className="text-3xl font-bold">
                 {item.price}
-                <span className="text-sm font-normal text-muted-foreground">
-                  {" "}
-                  / year
-                </span>
+                {item.plan === SubscriptionPlan.BASIC && <span className="text-sm font-normal text-muted-foreground"> / year</span>}
               </p>
               <p className="text-sm text-muted-foreground">
-                Proposed annual price. Test checkout does not make unreleased
-                features available.
+                {item.plan === SubscriptionPlan.PREMIUM
+                  ? "Premium templates can be explored in Appearance. Paid Premium checkout and advanced features are not released."
+                  : "Indicative annual price. Charges and access are verified by the backend; new purchases remain in test mode."}
               </p>
               <Button
                 className="w-full"
@@ -332,6 +331,7 @@ function BillingContent() {
           </Card>
         ))}
       </div>
+      {businessId && <BillingHistory businessId={businessId} />}
     </div>
   );
 }

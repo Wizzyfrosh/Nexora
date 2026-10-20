@@ -38,6 +38,7 @@ describe('Subscription purchase policy', () => {
     };
     repo = {
       findPayment: jest.fn().mockResolvedValue(purchase),
+      billingHistory: jest.fn().mockResolvedValue([]),
       fulfill: jest.fn(),
       findByBusinessId: jest
         .fn()
@@ -81,6 +82,21 @@ describe('Subscription purchase policy', () => {
     );
   });
 
+  it('limits owner payment-history access and excludes internal metadata', async () => {
+    await expect(service.billingHistory('stranger', 'business')).rejects.toThrow('Business not found');
+    expect(repo.billingHistory).not.toHaveBeenCalled();
+    repo.billingHistory.mockResolvedValue([{ paystackReference: 'nexora-test', paystackStatus: 'SUCCESS', amountNgn: 50000, currency: 'NGN', purchasedPlan: 'BASIC', paidAt: new Date('2026-10-01T00:00:00Z'), createdAt: new Date('2026-09-30T00:00:00Z'), coverageStart: null, coverageEnd: null, fulfilledAt: new Date(), expectedEmail: 'private@example.test', metadata: { authorization: 'not public' } }]);
+    const history = await service.billingHistory('owner', 'business');
+    expect(history).toHaveLength(1);
+    expect(history[0].verified).toBe(true);
+    expect(JSON.stringify(history)).not.toContain('private@example.test');
+    expect(JSON.stringify(history)).not.toContain('authorization');
+  });
+  it('permits a cancellation request even when new checkout is disabled', async () => {
+    repo.requestCancellation = jest.fn().mockResolvedValue({ status: 'PENDING' });
+    await expect(service.cancelRenewal('owner', 'business')).resolves.toEqual({ status: 'PENDING' });
+    expect(provider.assertTestCheckout).not.toHaveBeenCalled();
+  });
   it('checks ownership before any provider request', async () => {
     await expect(service.verifyPayment('stranger', ref)).rejects.toThrow(
       'Payment not found',

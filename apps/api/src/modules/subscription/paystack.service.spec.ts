@@ -43,6 +43,13 @@ describe('Paystack transport security', () => {
     ).toThrow('Only Paystack test');
     expect(fetchMock).not.toHaveBeenCalled();
   });
+  it('keeps existing cancellation possible with a live key even while new checkout is blocked', async () => {
+    const live = new PaystackService(new ConfigService({ paystack: { secretKey: 'sk_live_fake' } }));
+    expect(() => live.assertTestCheckout()).toThrow();
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ status: true, data: null }), { status: 200 }));
+    await expect(live.cancelSubscription('SUB_example', 'private-email-token')).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith('https://api.paystack.co/subscription/disable', expect.objectContaining({ method: 'POST' }));
+  });
   it('bounds provider requests and hides provider errors', async () => {
     const mock = jest
       .spyOn(global, 'fetch')

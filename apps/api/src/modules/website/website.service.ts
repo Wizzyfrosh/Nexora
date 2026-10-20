@@ -1,5 +1,6 @@
 import { validateSections } from './website-input';
 import { validateAppearance } from './appearance-input';
+import { isTemplateEntitled, TEMPLATE_CATALOG } from '@nexora/shared-types';
 import {
   Injectable,
   NotFoundException,
@@ -66,6 +67,9 @@ export class WebsiteService {
     const website = await this.websiteRepo.findByBusinessId(businessId);
     if (!website || website.deletedAt)
       throw new NotFoundException('Website is unavailable');
+    const subscription = await this.websiteRepo.getSubscriptionForBusiness(businessId);
+    if (!isTemplateEntitled(website.theme, subscription))
+      throw new NotFoundException('Website is unavailable');
     validateAppearance(website);
     validateSections(website.sections.filter((s) => !s.deletedAt));
     return {
@@ -79,6 +83,27 @@ export class WebsiteService {
   }
 
   async getThemes() {
-    return this.websiteRepo.getThemes();
+    const seeded = await this.websiteRepo.getThemes();
+    // Public catalogue remains accurate even if the optional theme seed has not run.
+    // Presentation metadata and access tiers use the shared policy source of truth.
+    return TEMPLATE_CATALOG.map((template) => {
+      const stored = seeded.find((item) => item.themeId === template.id && !item.deletedAt);
+      return {
+        id: stored?.id ?? template.id,
+        themeId: template.id,
+        name: template.name,
+        category: template.category,
+        description: template.description,
+        layout: template.layout,
+        tier: template.tier,
+        isPremium: template.tier === 'PREMIUM',
+        colors: stored?.colors ?? {},
+        darkColors: stored?.darkColors ?? {},
+        typography: stored?.typography ?? {},
+        spacing: stored?.spacing ?? {},
+        // The seeded placeholders repeat one generic image: do not misrepresent them as theme screenshots.
+        previewImageUrl: null,
+      };
+    });
   }
 }

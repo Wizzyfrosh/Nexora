@@ -1,0 +1,131 @@
+/* Nexora original storefront design families.
+   Kept isolated to .store-root; the owner's app dark mode never recolors a client's brand. */
+.store-root{min-height:100vh}
+.store-root .store-card,.store-root .store-hero-image,.store-root .store-contact-form{transition:box-shadow .25s,border-color .25s,transform .25s}
+.store-root .store-card:hover{transform:translateY(-3px);box-shadow:0 18px 50px #2e17331a}
+.store-root .store-header{min-height:96px}
+.store-root .store-hero{min-height:520px}
+.store-root .store-card h3{letter-spacing:-.025em}
+.store-root .store-card strong{display:block;margin-top:14px}
+.store-root .store-contact-form :is(input,textarea):focus-visible{outline:3px solid var(--store-brand);outline-offset:2px}
+.store-root .store-button:hover{filter:brightness(1.13)}
+
+/* Atelier Minimal — sharp geometry, bold sans and highly structured catalogue. */
+.store-theme-modern_white{color:#262628;background:#fafafa;font-family:Arial,Helvetica,sans-serif}
+.store-theme-modern_white .store-header{border-bottom:1px solid #dedede}
+.store-theme-modern_white .store-brand{letter-spacing:-.055em;text-transform:uppercase}
+.store-theme-modern_white .store-hero{grid-template-columns:1fr 1.06fr;gap:7vw}
+.store-theme-modern_white h1{font-family:Arial,sans-serif;font-weight:850;text-transform:uppercase;letter-spacing:-.07em}
+.store-theme-modern_white .store-eyebrow{letter-spacing:.25em}
+.store-theme-modern_white .store-hero-image,.store-theme-modern_white .store-image{border-radius:2px}
+.store-theme-modern_white .store-button{border-radius:3px;background:#262628;border-color:#262628}
+.store-theme-modern_white .store-card{border-radius:4px}
+.store-theme-modern_white .store-tinted{background:#efefed;border-radius:3px}
+.store-theme-modern_white .store-contact-form{border-radius:3px}
+
+/* Botanical Studio — green editorial organic surfaces. */
+.store-theme-business_green{color:#234238;background:#f8fbf6;font-family:Arial,Helvetica,sans-serif}
+.store-theme-business_green .store-hero{gap:75px}
+.store-theme-business_green h1,.store-theme-business_green h2{font-family:Georgia,serif;font-weight:500;color:#285743;letter-spacing:-.04em}
+.store-theme-business_green .store-eyebrow{color:#477e60}
+.store-theme-business_green .store-hero-image{border-radius:250px 250px 18px 18px}
+.store-theme-business_green .store-image{border-radius:130px 130px 8px 8px}
+.store-theme-business_green .store-button{background:#285743;border-color:#285743;border-radius:100px}
+.store-theme-business_green .store-card{background:#fffdf7;border-color:#dfecdf;border-radius:20px 20px 70px 20px}
+.store-theme-business_green .store-tinted{background:#eaf2e7;border-radius:90px 18px 90px 18px}
+.store-theme-business_green .store-contact-form{border-radius:30px;background:#f1f6ed;border-color:#d7e4d3}
+
+/* The Editorial — white space, offset story image and magazine headings. */
+.store-theme-portfolio_lite{background:#f7f1e9;color:#403632;font-family:Arial,Helvetica,sans-serif}
+.store-theme-portfolio_lite .store-header{border-bottom:1px solid #d6c9bd}
+.store-theme-portfolio_lite .store-hero{grid-template-columns:1.08fr .92fr;gap:7vw}
+.store-theme-portfolio_lite h1,.store-theme-portfolio_lite h2{font:500 clamp(42px,6.3vw,92px)/1.01 Georgia,serif;letter-spacing:-.052em}
+.store-theme-portfolio_lite h2{font-size:clamp(34px,4.1vw,62px)}
+.store-theme-portfolio_lite .store-hero-image{border-radius:1px;transform:rotate(-2deg);box-shadow:16px 18px 0 #e7dac9}
+.store-theme-portfolio_lite .store-image{border-radius:0}
+.store-theme-portfolio_lite .store-button{border-radius:2px;background:#483a35;border-color:#483a35}
+.store-theme-portfolio_lite .store-card{background:transparent;border:0;border-bottom:1px solid #d0c2b4;border-radius:0}
+.store-theme-portfolio_lite .store-tinted{background:#ece0d1;border-radius:2px}
+.store-theme-portfolio_lite .store-contact-form{border-radius:2px;background:#fffaf4}
+
+/* Maison Luxe — gold-on-charcoal hospitality and prestige presentation. */
+.store-theme-luxury_gold{background:#14120f;color:#eee7d7;font-family:Arial,Helvetica,sans-serif}
+.store-theme-luxury_gold .store-header{border-bottom:1px solid #504530}
+.store-theme-luxury_gold .store-brand{font:500 25px Georgia,serif;letter-spacing:.08em}
+.store-theme-luxury_gold h1,.store-theme-luxury_gold h2{font-family:Georgia,serif;font-weight:400;letter-spacing:-.02em;color:#f6eddd}
+.store-theme-luxury_gold .store-eyebrow{color:#d6b878;letter-spacing:.24em}
+.store-theme-luxury_gold .store-lead,.store-theme-luxury_gold .store-story,.store-theme-luxury_gold .store-muted,.store-theme-luxury_gold .store-card p,.store-theme-luxury_gold .store-section-heading span{color:#cec1a8}
+.store-theme-luxury_gold .store-hero-image{border-radius:230px 230px 2px 2px;border:1px solid #816d45}
+.store-theme-luxury_gold .store-image{border-radius:0}
+.store-theme-luxury_gold .store-button{background:#c8a05a;border-color:#c8a05a;border-radius:2px;color:#19150e!important}
+.store-theme-luxury_gold .store-card{background:#211d18;border:1px solid #493e2d;border-radius:1px;color:#f7ebd0}
+.store-theme-luxury_gold .store-tinted{background:#211d18;border-radius:0}
+.store-theme-luxury_gold .store-contact,.store-theme-luxury_gold .store-about,.store-theme-luxury_gold .store-footer{border-color:#483d2b}
+.store-theme-luxury_gold .store-contact-form{background:#211d18;border-color:#493e2d;color:#f3eadd;border-radius:0}
+.store-theme-luxury_gold .store-contact-form :is(input,textarea){background:#2d271f;color:#f8f1e7;border-color:#786847}
+.store-theme-luxury_gold .store-footer{color:#c4b593}
+
+/* Mode Noir — high contrast, oversized condensed-feel headings and graphic grid. */
+.store-theme-fashion_black{background:#f4f3f0;color:#141414;font-family:Arial,Helvetica,sans-serif}
+.store-theme-fashion_black .store-header{border-bottom:3px solid #191919}
+.store-theme-fashion_black .store-brand{font-size:26px;text-transform:uppercase;letter-spacing:-.07em;font-weight:900}
+.store-theme-fashion_black h1{font-family:Arial,sans-serif;font-weight:950;text-transform:uppercase;letter-spacing:-.085em;font-size:clamp(46px,7vw,110px)}
+.store-theme-fashion_black h2{font-family:Arial,sans-serif;font-weight:850;text-transform:uppercase;letter-spacing:-.055em}
+.store-theme-fashion_black .store-hero{grid-template-columns:1fr 1.1fr}
+.store-theme-fashion_black .store-hero-image{border-radius:0;filter:grayscale(1);height:570px}
+.store-theme-fashion_black .store-image{border-radius:0;filter:grayscale(1)}
+.store-theme-fashion_black .store-button{background:#151515;border-color:#151515;border-radius:0}
+.store-theme-fashion_black .store-card{border-radius:0;border-color:#262626}
+.store-theme-fashion_black .store-tinted{background:#e7e5e2;border-radius:0}
+.store-theme-fashion_black .store-contact-form{border-radius:0}
+
+/* The Table — warm restaurant editorial and rounded menu tiles. */
+.store-theme-restaurant_red{background:#fcf3e7;color:#52352e;font-family:Arial,Helvetica,sans-serif}
+.store-theme-restaurant_red .store-header{border-bottom:1px solid #e0caba}
+.store-theme-restaurant_red h1,.store-theme-restaurant_red h2{font-family:Georgia,serif;font-weight:500;color:#87412d}
+.store-theme-restaurant_red .store-eyebrow{color:#ae6045}
+.store-theme-restaurant_red .store-hero{grid-template-columns:1fr 1.1fr}
+.store-theme-restaurant_red .store-hero-image{border-radius:220px 220px 80px 80px}
+.store-theme-restaurant_red .store-image{border-radius:28px 28px 0 0}
+.store-theme-restaurant_red .store-button{background:#9d4834;border-color:#9d4834;border-radius:35px}
+.store-theme-restaurant_red .store-card{background:#fffaf4;border:1px solid #e7cdb4;border-radius:30px 30px 12px 12px}
+.store-theme-restaurant_red .store-tinted{background:#f6e4d3;border-radius:46px}
+.store-theme-restaurant_red .store-contact-form{background:#fffaf4;border-color:#e2c1a7}
+
+/* Orbit Digital — tech-forward split layout and glassy technical surfaces. */
+.store-theme-tech_startup{background:#0d1429;color:#eaf3ff;font-family:Arial,Helvetica,sans-serif}
+.store-theme-tech_startup .store-header{border-bottom:1px solid #2b3c5b}
+.store-theme-tech_startup h1,.store-theme-tech_startup h2{color:#f0f7ff;font-family:Arial,sans-serif;font-weight:850;letter-spacing:-.065em}
+.store-theme-tech_startup .store-hero{background:radial-gradient(ellipse at 80% 12%,#244776 0,transparent 62%);grid-template-columns:1.08fr 1fr}
+.store-theme-tech_startup .store-eyebrow{color:#8ac7ff}
+.store-theme-tech_startup .store-lead,.store-theme-tech_startup .store-story,.store-theme-tech_startup .store-muted,.store-theme-tech_startup .store-card p,.store-theme-tech_startup .store-section-heading span{color:#bacbe3}
+.store-theme-tech_startup .store-hero-image{border-radius:22px;box-shadow:24px 24px 0 #203c64}
+.store-theme-tech_startup .store-image{border-radius:10px}
+.store-theme-tech_startup .store-button{background:#70b8ff;border-color:#70b8ff;color:#0b1c30!important;border-radius:10px}
+.store-theme-tech_startup .store-card,.store-theme-tech_startup .store-contact-form{background:#1a2945;border:1px solid #3f5678;color:#f6faff;border-radius:18px}
+.store-theme-tech_startup .store-tinted{background:#16233c;border-radius:22px}
+.store-theme-tech_startup .store-about,.store-theme-tech_startup .store-contact,.store-theme-tech_startup .store-footer{border-color:#3f5678}
+.store-theme-tech_startup .store-contact-form :is(input,textarea){background:#10213b;color:#eff7ff;border-color:#52698b}
+.store-theme-tech_startup .store-footer{color:#b8cde9}
+
+/* Mosaic Works — asymmetrical expressive studio layout. */
+.store-theme-creative_studio{background:#fff4ee;color:#442840;font-family:Arial,Helvetica,sans-serif}
+.store-theme-creative_studio .store-header{border-bottom:2px solid #dfabd0}
+.store-theme-creative_studio h1,.store-theme-creative_studio h2{font-family:Arial,sans-serif;font-weight:900;letter-spacing:-.068em}
+.store-theme-creative_studio .store-hero{grid-template-columns:1fr 1.18fr;gap:7vw}
+.store-theme-creative_studio .store-hero-image{border-radius:50% 12% 45% 8%;transform:rotate(3deg);box-shadow:-18px 18px 0 #efc9dc}
+.store-theme-creative_studio .store-image{border-radius:30% 5% 25% 5%}
+.store-theme-creative_studio .store-eyebrow{color:#a24b83}
+.store-theme-creative_studio .store-button{background:#9c4e83;border-color:#9c4e83;border-radius:14px}
+.store-theme-creative_studio .store-card{border-radius:30px;background:white;border-color:#e9b9d9}
+.store-theme-creative_studio .store-tinted{background:#f8dce8;border-radius:70px 20px 70px 20px}
+.store-theme-creative_studio .store-contact-form{background:#fffafd;border-color:#ebbcdb}
+@media(max-width:760px){
+  .store-root .store-hero{grid-template-columns:1fr;min-height:auto}
+  .store-root .store-hero-image{transform:none;height:330px;box-shadow:none}
+  .store-root .store-card:hover{transform:none}
+  .store-root .store-hero{gap:30px}
+  .store-root .store-header{min-height:auto}
+  .store-root .store-tinted{border-radius:20px}
+}
+@media(prefers-reduced-motion:reduce){.store-root .store-card,.store-root .store-hero-image{transition:none}.store-root .store-card:hover{transform:none}}

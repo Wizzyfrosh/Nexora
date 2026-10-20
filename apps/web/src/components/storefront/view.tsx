@@ -4,6 +4,7 @@ import type { Storefront } from "@nexora/shared-types";
 import { ContactForm } from "./contact-form";
 import { AnalyticsConsent } from "./analytics-consent";
 import "./storefront.css";
+import "./storefront-variants.css";
 const price = (value: string) =>
   new Intl.NumberFormat("en-NG", {
     style: "currency",

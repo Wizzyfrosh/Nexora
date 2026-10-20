@@ -32,6 +32,15 @@ export class SubscriptionController {
   constructor(private readonly subService: SubscriptionService) {}
 
   @UseGuards(JwtAuthGuard, TenantGuard)
+  @Get(':businessId/history')
+  async billingHistory(
+    @CurrentUser('id') userId: string,
+    @Param('businessId') businessId: string,
+  ) {
+    return this.subService.billingHistory(userId, businessId);
+  }
+
+  @UseGuards(JwtAuthGuard, TenantGuard)
   @Get(':businessId/status')
   async billingStatus(
     @CurrentUser('id') userId: string,
