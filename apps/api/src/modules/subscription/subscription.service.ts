@@ -33,6 +33,8 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
+    // An external cron worker can own reconciliation without an always-on web timer.
+    if (this.config.get<string>('billing.workerMode') === 'scheduled') return;
     this.timer = setInterval(() => void this.recoverPendingEvents(), 15000);
     this.timer.unref();
   }
@@ -239,9 +241,14 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  async recoverPendingEvents() {
-    if (this.running) return;
+  async recoverPendingEvents(strict = false) {
+    if (this.running) {
+      if (strict) throw new Error('Billing worker already running');
+      return;
+    }
     this.running = true;
+    let deferred = 0;
+    let review = 0;
     try {
       await this.checkExpiredSubscriptions();
       await this.subRepo.enqueueProviderSyncs(new Date());
@@ -257,21 +264,24 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
               event.id,
               handled ? 'DONE' : 'REVIEW',
             );
+            if (!handled) review++;
             continue;
           }
           await this.verifyKnownPayment(event.reference);
           await this.subRepo.finishEvent(event.id, 'DONE');
         } catch {
+          deferred++;
           await this.subRepo.retryEvent(event.id, event.attempts + 1);
           this.logger.warn(
             'Payment event deferred; inspect pending/review inbox',
           );
         }
       }
+      if (strict && (deferred || review))
+        throw new Error('Billing recovery requires operator attention');
     } catch {
-      this.logger.error(
-        'Billing recovery unavailable; durable records retained',
-      );
+      this.logger.error('Billing recovery unavailable or requires review; durable records retained');
+      if (strict) throw new Error('Billing recovery failed; inspect protected event queue');
     } finally {
       this.running = false;
     }
