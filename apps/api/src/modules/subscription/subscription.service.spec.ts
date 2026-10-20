@@ -82,6 +82,37 @@ describe('Subscription purchase policy', () => {
     );
   });
 
+  it('does not register a web recovery timer when cron owns the queue', () => {
+    const timerSpy = jest.spyOn(global, 'setInterval');
+    const scheduled = new SubscriptionService(
+      repo as unknown as SubscriptionRepository,
+      provider as unknown as PaystackService,
+      {} as AuthRepository, {} as BusinessService,
+      new ConfigService({ billing: { workerMode: 'scheduled' } }),
+      {} as BillingLifecycleService,
+    );
+    try {
+      scheduled.onModuleInit();
+      expect(timerSpy).not.toHaveBeenCalled();
+    } finally {
+      scheduled.onModuleDestroy();
+      timerSpy.mockRestore();
+    }
+  });
+  it('fails the scheduled run when event recovery is deferred', async () => {
+    repo.dueEvents.mockResolvedValue([
+      { id: 'event', event: 'charge.success', reference: ref, attempts: 0 },
+    ]);
+    provider.verifyTransaction.mockRejectedValue(new Error('provider timeout'));
+    await expect(service.recoverPendingEvents(true))
+      .rejects.toThrow('Billing recovery failed');
+    expect(repo.retryEvent).toHaveBeenCalledWith('event', 1);
+  });
+  it('surfaces database failures to the scheduled worker', async () => {
+    repo.expire.mockRejectedValue(new Error('database unavailable'));
+    await expect(service.recoverPendingEvents(true))
+      .rejects.toThrow('Billing recovery failed');
+  });
   it('limits owner payment-history access and excludes internal metadata', async () => {
     await expect(service.billingHistory('stranger', 'business')).rejects.toThrow('Business not found');
     expect(repo.billingHistory).not.toHaveBeenCalled();
