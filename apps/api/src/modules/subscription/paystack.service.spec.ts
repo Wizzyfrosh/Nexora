@@ -39,16 +39,38 @@ describe('Paystack transport security', () => {
     expect(() =>
       new PaystackService(
         new ConfigService({ paystack: { secretKey: 'sk_live_fake' } }),
-      ).assertTestCheckout(),
-    ).toThrow('Only Paystack test');
+      ).assertCheckoutEnabled(),
+    ).toThrow('Live checkout is disabled');
     expect(fetchMock).not.toHaveBeenCalled();
   });
   it('keeps existing cancellation possible with a live key even while new checkout is blocked', async () => {
     const live = new PaystackService(new ConfigService({ paystack: { secretKey: 'sk_live_fake' } }));
-    expect(() => live.assertTestCheckout()).toThrow();
+    expect(() => live.assertCheckoutEnabled()).toThrow();
     const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ status: true, data: null }), { status: 200 }));
     await expect(live.cancelSubscription('SUB_example', 'private-email-token')).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledWith('https://api.paystack.co/subscription/disable', expect.objectContaining({ method: 'POST' }));
+  });
+  it('requires matching production origin and an explicit switch for live checkout', () => {
+    const values = {
+      nodeEnv: 'production',
+      frontendUrl: 'https://nexora.froshcodeorbit.site',
+      paystack: { secretKey: 'sk_live_fake', liveEnabled: true },
+    };
+    const valid = new PaystackService(new ConfigService(values));
+    expect(valid.expectedDomain()).toBe('live');
+    expect(() => valid.assertCheckoutEnabled()).not.toThrow();
+    const wrongOrigin = new PaystackService(new ConfigService({
+      ...values, frontendUrl: 'https://attacker.example',
+    }));
+    expect(() => wrongOrigin.assertCheckoutEnabled()).toThrow('Live checkout is disabled');
+    const preview = new PaystackService(new ConfigService({ ...values, nodeEnv: 'development' }));
+    expect(() => preview.assertCheckoutEnabled()).toThrow('Live checkout is disabled');
+    const off = new PaystackService(new ConfigService({
+      ...values, paystack: { secretKey: 'sk_live_fake', liveEnabled: false },
+    }));
+    expect(() => off.assertCheckoutEnabled()).toThrow('Live checkout is disabled');
+    expect(() => provider.assertCheckoutEnabled()).not.toThrow();
+    expect(provider.expectedDomain()).toBe('test');
   });
   it('bounds provider requests and hides provider errors', async () => {
     const mock = jest
