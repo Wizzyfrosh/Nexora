@@ -19,6 +19,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Test manual production database migration guard
+        run: node --test scripts/guard-db-release.test.mjs
       # Runtime gate rejects every known severity; full-tree gate also rejects critical tooling findings.
       # Known unpatched noncritical tooling findings remain visible; see docs/DEPENDENCIES.md.
       - run: npm run audit:production
