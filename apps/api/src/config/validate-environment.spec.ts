@@ -4,6 +4,7 @@ const production = {
   JWT_ACCESS_SECRET: 'x'.repeat(48),
   JWT_REFRESH_SECRET: 'y'.repeat(48),
   DATABASE_URL: 'postgresql://test:test@localhost/test',
+  DIRECT_URL: 'postgresql://test:test@localhost/test',
   FRONTEND_URL: 'https://example.com',
 };
 describe('production configuration', () => {
@@ -89,12 +90,27 @@ describe('production configuration', () => {
     'JWT_ACCESS_SECRET',
     'JWT_REFRESH_SECRET',
     'DATABASE_URL',
+    'DIRECT_URL',
     'FRONTEND_URL',
   ])('rejects absent %s', (key) =>
     expect(() =>
       validateEnvironment({ ...production, [key]: undefined }),
     ).toThrow(),
   );
+  it('rejects pooled or mismatched direct migration endpoints', () => {
+    const pooled = {
+      ...production,
+      DATABASE_URL: 'postgresql://test:test@ep-example-pooler.c-7.eu-central-1.aws.neon.tech/nexora',
+      DIRECT_URL: 'postgresql://test:test@ep-example.c-7.eu-central-1.aws.neon.tech/nexora',
+    };
+    expect(validateEnvironment(pooled)).toBe(pooled);
+    expect(() => validateEnvironment({
+      ...pooled, DIRECT_URL: pooled.DATABASE_URL,
+    })).toThrow('matching non-pooled');
+    expect(() => validateEnvironment({
+      ...pooled, DIRECT_URL: 'postgresql://test:test@ep-other.c-7.eu-central-1.aws.neon.tech/nexora',
+    })).toThrow('matching non-pooled');
+  });
   it('rejects identical secrets', () =>
     expect(() =>
       validateEnvironment({
