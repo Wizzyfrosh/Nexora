@@ -21,6 +21,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ReadinessController, ReadinessService } from './readiness.controller';
 import { OriginGuard } from './common/guards/origin.guard';
 import { validateEnvironment } from './config/validate-environment';
 import { MediaModule } from './modules/media/media.module';
@@ -28,7 +29,7 @@ import { StorefrontModule } from './modules/storefront/storefront.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
-  controllers: [AppController],
+  controllers: [AppController, ReadinessController],
   imports: [
     // Global configuration
     ConfigModule.forRoot({
@@ -74,6 +75,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
   ],
   providers: [
     AppService,
+    ReadinessService,
     { provide: APP_GUARD, useClass: OriginGuard },
     // Global exception filter
     {
