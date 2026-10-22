@@ -1,6 +1,6 @@
 # Account email over HTTPS
 
-Status: optional Brevo transport implemented; no provider credentials configured or real email sent. Existing SMTP remains the default for compatible hosts. Existing account authentication and encrypted outbox are retained.
+Status (22 October 2026): preview outbox records two VERIFY messages as SENT on their first attempt. This proves transport acceptance for those messages; it does not prove production inbox delivery. Production has no mail attempts yet. Existing SMTP remains the default where configured; encrypted outbox is retained.
 
 ## Configure Nexora's API
 
@@ -24,7 +24,7 @@ The current preview has Vercel access protection. A recipient needs access to th
 
 ## Acceptance test after configuration
 
-Use a controlled test account and recipient. Request verification, observe provider acceptance, open the inbox link and confirm verification. Request a password reset, open the new link, reset once, and verify that the old password/session fails and the new password works. Reused/expired links must fail. A provider receipt is acceptance, not proof of inbox delivery.
+Use a controlled test account and recipient in the intended environment. Request verification, observe provider acceptance, receive the six-digit inbox code and submit it on /verify-email. Request a password reset, open the new link, reset once, and verify that the old password/session fails and the new password works. Reused/expired reset links and verification codes must fail. A provider receipt is acceptance, not proof of inbox delivery.
 
 The worker sends up to five messages per poll, with the existing leased, encrypted outbox and retry policy. Render free-service sleep can delay polling. A crash after provider acceptance can duplicate an email; tokens remain single-use. Continuous delivery, alerts, bounce handling and retention are still production gates. No exactly-once delivery claim is made.
 

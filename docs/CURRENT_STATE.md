@@ -1,5 +1,20 @@
 # Current implementation audit
 
+## Operational acceptance follow-up — 22 October 2026
+
+Preview outbox evidence records two VERIFY emails as SENT on their first attempt.
+Production has no account-mail attempts, so production delivery/inbox acceptance
+remains open. The preview billing inbox still has one subscription.create retry
+(attempt 5); two initial charge events are DONE. No renewal link is inferred.
+Recovery failures now report only a static processing stage, allowing operators
+to distinguish provider reads, payment anchors, link policy, cancellation and
+invoice reconciliation without exposing provider messages or payment data.
+
+GitHub environment-variable administration is unavailable through the connector.
+The browser is signed out, so the migration-approval reset requires secure GitHub
+sign-in. No environment value has been changed or claimed reset. Paid cron/
+always-on hosting is still unapproved, and no paid service was created.
+
 ## Production integration — 22 October 2026
 
 The owner explicitly authorized merging and deploying the remaining reviewed work.

@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { Logger } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
 import { SubscriptionRepository } from './subscription.repository';
 import { PaystackService } from './paystack.service';
@@ -241,8 +242,16 @@ describe('Subscription purchase policy', () => {
     repo.dueEvents.mockResolvedValue([
       { id: 'event', event: 'charge.success', reference: ref, attempts: 0 },
     ]);
-    provider.verifyTransaction.mockRejectedValue(new Error('Timeout'));
-    await service.recoverPendingEvents();
+    provider.verifyTransaction.mockRejectedValue(new Error('private provider response and token'));
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    try {
+      await service.recoverPendingEvents();
+      expect(warn).toHaveBeenCalledWith(
+        'Payment event deferred at INITIAL_VERIFICATION_OR_INTERNAL; inspect pending/review inbox',
+      );
+    } finally {
+      warn.mockRestore();
+    }
     expect(repo.retryEvent).toHaveBeenCalledWith('event', 1);
     expect(repo.finishEvent).not.toHaveBeenCalled();
   });

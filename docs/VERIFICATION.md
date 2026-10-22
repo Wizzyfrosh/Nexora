@@ -1,5 +1,19 @@
 # Verification report — 15 October 2026
 
+## Operational diagnostics — 22 October 2026
+
+- Shared-types build, Prisma generation, API build and 254 unit tests across
+  22 suites passed. New regressions cover redacted provider failures, missing
+  exact payment evidence, distinct link-policy failures and redacted worker logs.
+- Targeted API ESLint and git diff --check passed. Lifecycle policy, retries,
+  quarantine and payment fulfilment are unchanged; no provider called by tests.
+- Read-only preview aggregates show two VERIFY mails SENT, two charge.success
+  events DONE and one subscription.create PENDING at attempt 5. Production has
+  no mail/payment-event rows. Provider acceptance is not an inbox-delivery claim.
+- Migration variable reset remains blocked by signed-out GitHub browser and no
+  connector administration capability. No production account/session impersonation,
+  email send, storage write or live payment was performed during these checks.
+
 ## Production integration — 22 October 2026
 
 - PR #25 merged after CI run `39861053027` passed both jobs, including disposable

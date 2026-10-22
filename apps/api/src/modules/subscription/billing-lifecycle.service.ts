@@ -8,6 +8,20 @@ import {
   validTransactionId,
 } from './billing-policy';
 
+type RecoveryStage =
+  | 'PROVIDER_READ'
+  | 'PAYMENT_ANCHOR'
+  | 'SUBSCRIPTION_LINK'
+  | 'PROVIDER_CANCELLATION'
+  | 'INVOICE_RECONCILIATION';
+
+// Static stages only: never retain the provider response, customer or token.
+export class BillingRecoveryError extends Error {
+  constructor(readonly stage: RecoveryStage) {
+    super('Billing recovery failed at ' + stage);
+  }
+}
+
 @Injectable()
 export class BillingLifecycleService {
   constructor(
@@ -18,6 +32,21 @@ export class BillingLifecycleService {
   async process(
     event: PaymentEvent,
     verifyInitial: (reference: string) => Promise<void>,
+  ): Promise<boolean> {
+    let stage: RecoveryStage = 'PROVIDER_READ';
+    try {
+      return await this.processEvent(event, verifyInitial, (next) => {
+        stage = next;
+      });
+    } catch {
+      throw new BillingRecoveryError(stage);
+    }
+  }
+
+  private async processEvent(
+    event: PaymentEvent,
+    verifyInitial: (reference: string) => Promise<void>,
+    stage: (next: RecoveryStage) => void,
   ): Promise<boolean> {
     if (
       ![
@@ -37,6 +66,7 @@ export class BillingLifecycleService {
     if (!code || !/^SUB_[A-Za-z0-9]+$/.test(code)) return false;
     const { data } = await this.provider.fetchSubscription(code);
     requireBilling(data.subscription_code === code);
+    stage('PAYMENT_ANCHOR');
     const linked = await this.repo.findLinked(code);
     let anchor = linked?.billingAnchorPayment;
     if (!anchor) {
@@ -59,8 +89,10 @@ export class BillingLifecycleService {
       }
       requireBilling(anchor?.fulfilledAt);
     }
+    stage('SUBSCRIPTION_LINK');
     await this.repo.linkAndSync(anchor, data, this.provider.expectedDomain());
     if (event.event === 'subscription.cancel') {
+      stage('PROVIDER_CANCELLATION');
       if (['active', 'attention'].includes(data.status)) {
         requireBilling(data.email_token);
         await this.provider.cancelSubscription(code, data.email_token);
@@ -70,6 +102,7 @@ export class BillingLifecycleService {
       return true;
     }
     if (event.event === 'invoice.update' && evidence.paid) {
+      stage('INVOICE_RECONCILIATION');
       const { data: charge } = await this.provider.verifyTransaction(
         evidence.reference,
       );
@@ -82,6 +115,7 @@ export class BillingLifecycleService {
     } else if (
       ['subscription.sync', 'subscription.create'].includes(event.event)
     ) {
+      stage('INVOICE_RECONCILIATION');
       await this.reconcileLatest(data, anchor);
     }
     return true;

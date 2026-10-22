@@ -14,7 +14,10 @@ import { PaystackService } from './paystack.service';
 import { SubscriptionPlan } from '@nexora/shared-types';
 import { AuthRepository } from '../auth/auth.repository';
 import { BusinessService } from '../business/business.service';
-import { BillingLifecycleService } from './billing-lifecycle.service';
+import {
+  BillingLifecycleService,
+  BillingRecoveryError,
+} from './billing-lifecycle.service';
 import { validTransactionId } from './billing-policy';
 
 @Injectable()
@@ -269,21 +272,33 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
           }
           await this.verifyKnownPayment(event.reference);
           await this.subRepo.finishEvent(event.id, 'DONE');
-        } catch {
+        } catch (error) {
           deferred++;
           await this.subRepo.retryEvent(event.id, event.attempts + 1);
           this.logger.warn(
-            'Payment event deferred; inspect pending/review inbox',
+            'Payment event deferred at ' +
+              (error instanceof BillingRecoveryError
+                ? error.stage
+                : 'INITIAL_VERIFICATION_OR_INTERNAL') +
+              '; inspect pending/review inbox',
           );
         }
       }
       // A previous invocation may already have quarantined an event. Keep cron
       // failure notifications active until an operator resolves that incident.
-      if (strict && (deferred || review || await this.subRepo.hasReviewEvents()))
+      if (
+        strict &&
+        (deferred || review || (await this.subRepo.hasReviewEvents()))
+      )
         throw new Error('Billing recovery requires operator attention');
     } catch {
-      this.logger.error('Billing recovery unavailable or requires review; durable records retained');
-      if (strict) throw new Error('Billing recovery failed; inspect protected event queue');
+      this.logger.error(
+        'Billing recovery unavailable or requires review; durable records retained',
+      );
+      if (strict)
+        throw new Error(
+          'Billing recovery failed; inspect protected event queue',
+        );
     } finally {
       this.running = false;
     }
