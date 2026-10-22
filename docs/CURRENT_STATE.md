@@ -11,8 +11,11 @@ its Cloudinary configuration must not replace the current implementation.
 The production API returned `data.status=ready` over HTTPS after waking from
 free-tier sleep. Its seven migrations are applied; it has no sandbox accounts,
 payments or plans. Vercel production now has its own API_UPSTREAM_URL pointing
-to the production Render API and SITE_URL set to the custom domain. A new
-production build is required to activate those settings. Preview remains separate.
+to the production Render API and SITE_URL set to the custom domain. Production
+Vercel deployment `dpl_GNGFBn1AAf1pdnDaasDTqgsk8UA5` is READY at merge `214cdac0`
+and serves the custom domain. Its proxied readiness returns HTTP 200, anonymous
+profile requests return HTTP 401, and storefront sitemap reads return HTTP 200.
+Preview remains separate.
 
 Live charging, public publishing and analytics remain disabled. Inbox delivery,
 production media operations, recurring-provider linkage and reliable scheduler/
