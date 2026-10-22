@@ -1,5 +1,16 @@
 # Verification report — 15 October 2026
 
+## Provider timestamp compatibility — 22 October 2026
+
+- API build, 265 unit tests in 22 suites, timestamp-source ESLint and diff checks
+  passed. Cases cover both timestamp names, null/missing values, offset-free
+  strings, numeric values, future instants and conflicting aliases.
+- Added disposable PostgreSQL regression for snake-case timestamp linking, stale
+  snapshot rejection and preserved paid expiry; execution delegated to CI.
+- Preview deploy dep-dbd8uvvb9u1s738r040g was live at 2982590 before one controlled
+  due-time advance. The event moved from attempt 6 to 7 and logged the timestamp
+  policy rejection. No attempt counter, paid access or REVIEW row was reset.
+
 ## Recurring-link evidence reasons — 22 October 2026
 
 - API build, 258 tests across 22 suites, targeted source ESLint and diff checks

@@ -24,6 +24,10 @@ export type BillingEvidenceReason =
   | 'CURRENCY_MISMATCH'
   | 'CUSTOMER_MISMATCH'
   | 'PROVIDER_TIMESTAMP'
+  | 'PROVIDER_TIMESTAMP_MISSING'
+  | 'PROVIDER_TIMESTAMP_INVALID'
+  | 'PROVIDER_TIMESTAMP_FUTURE'
+  | 'PROVIDER_TIMESTAMP_CONFLICT'
   | 'PROVIDER_STATUS'
   | 'LINK_CONFLICT'
   | 'LINK_STATUS_CONFLICT';
@@ -46,6 +50,40 @@ export function validTransactionId(id: unknown): boolean {
     (typeof id === 'string' && /^[1-9][0-9]{0,30}$/.test(id)) ||
     (typeof id === 'number' && Number.isSafeInteger(id) && id > 0)
   );
+}
+
+export function providerSubscriptionUpdatedAt(
+  data: PaystackSubscription,
+): Date {
+  const values: unknown[] = [data.updatedAt, data.updated_at].filter(
+    (value) => value !== undefined && value !== null,
+  );
+  requireBilling(values.length > 0, 'PROVIDER_TIMESTAMP_MISSING');
+  const dates = values.map((value) => {
+    // An explicit offset prevents the server's timezone from changing ordering.
+    requireBilling(
+      typeof value === 'string' &&
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(
+          value,
+        ),
+      'PROVIDER_TIMESTAMP_INVALID',
+    );
+    const date = new Date(value);
+    requireBilling(
+      Number.isFinite(date.getTime()),
+      'PROVIDER_TIMESTAMP_INVALID',
+    );
+    requireBilling(
+      date.getTime() <= Date.now() + 300000,
+      'PROVIDER_TIMESTAMP_FUTURE',
+    );
+    return date;
+  });
+  requireBilling(
+    dates.every((date) => date.getTime() === dates[0].getTime()),
+    'PROVIDER_TIMESTAMP_CONFLICT',
+  );
+  return dates[0];
 }
 
 export function checkProviderSubscription(
@@ -78,11 +116,7 @@ export function checkProviderSubscription(
       data.customer?.email?.trim().toLowerCase() === anchor.expectedEmail,
     'CUSTOMER_MISMATCH',
   );
-  requireBilling(
-    Number.isFinite(new Date(data.updatedAt).getTime()) &&
-      new Date(data.updatedAt).getTime() <= Date.now() + 300000,
-    'PROVIDER_TIMESTAMP',
-  );
+  providerSubscriptionUpdatedAt(data);
   requireBilling(
     ['active', 'non-renewing', 'attention', 'cancelled', 'completed'].includes(
       data.status,

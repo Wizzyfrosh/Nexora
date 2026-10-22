@@ -27,7 +27,8 @@ export interface PaystackSubscription {
   domain: string;
   status: string;
   amount: number;
-  updatedAt: string;
+  updatedAt?: string | null;
+  updated_at?: string | null;
   customer: { customer_code: string; email: string };
   plan: {
     plan_code: string;

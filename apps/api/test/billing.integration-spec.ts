@@ -55,7 +55,7 @@ describe('Billing on isolated PostgreSQL (only provider transport mocked)', () =
       .expect(200);
     return createHash('sha256').update(raw).digest('hex');
   }
-  async function agreement() {
+  async function agreement(timestampStyle: 'camel' | 'snake' = 'camel') {
     const initial = await purchase();
     await service.verifyPayment(ownerId, initial.reference);
     const start = new Date(initial.paid_at),
@@ -84,6 +84,10 @@ describe('Billing on isolated PostgreSQL (only provider transport mocked)', () =
         period_end: end.toISOString(),
       },
     };
+    if (timestampStyle === 'snake') {
+      data.updated_at = data.updatedAt;
+      delete data.updatedAt;
+    }
     agreements.set(data.subscription_code, data);
     await sendEvent('subscription.create', {
       subscription_code: data.subscription_code,
@@ -262,6 +266,19 @@ describe('Billing on isolated PostgreSQL (only provider transport mocked)', () =
   });
   afterAll(async () => {
     if (app) await app.close();
+  });
+
+  it('links a snake-case provider timestamp and still rejects an older provider snapshot', async () => {
+    const data = await agreement('snake');
+    const linked = await repo.findLinked(data.subscription_code);
+    expect(linked!.providerStatusUpdatedAt).toEqual(new Date(data.updated_at!));
+    const expiry = linked!.currentPeriodEnd;
+    await repo.linkAndSync(linked!.billingAnchorPayment!, {
+      ...data, status: 'non-renewing', updated_at: '2020-01-01T00:00:00Z',
+    });
+    const saved = await repo.findLinked(data.subscription_code);
+    expect(saved!.renewalStatus).toBe('active');
+    expect(saved!.currentPeriodEnd).toEqual(expiry);
   });
 
   it('links subscription codes by exact original transaction, without extending the initial invoice', async () => {

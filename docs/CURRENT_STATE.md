@@ -1,5 +1,15 @@
 # Current implementation audit
 
+## Provider timestamp compatibility — 22 October 2026
+
+A controlled retry of the single preview PENDING event reported
+SUBSCRIPTION_LINK/PROVIDER_TIMESTAMP. Prior identity, plan, amount, currency
+and customer checks passed; the original paid entitlement remains unchanged.
+The shared provider timestamp parser now accepts updatedAt or updated_at,
+requires an explicit timezone, rejects missing/invalid/future/conflicting values,
+and supplies the same validated instant to policy and monotonic persistence.
+Real provider acceptance remains pending the next controlled retry.
+
 ## Recurring-link investigation — 22 October 2026
 
 The owner screenshot confirms NEXORA_MIGRATE_APPROVED=false; the migration
