@@ -14,9 +14,31 @@ export interface InvoiceEvidence {
   paid: boolean;
 }
 
-export function requireBilling(condition: unknown): asserts condition {
-  if (!condition)
-    throw new BadRequestException('Billing evidence requires review');
+export type BillingEvidenceReason =
+  | 'EVIDENCE_REJECTED'
+  | 'SUBSCRIPTION_ID'
+  | 'PROVIDER_DOMAIN'
+  | 'PAYMENT_ANCHOR'
+  | 'PLAN_MISMATCH'
+  | 'AMOUNT_MISMATCH'
+  | 'CURRENCY_MISMATCH'
+  | 'CUSTOMER_MISMATCH'
+  | 'PROVIDER_TIMESTAMP'
+  | 'PROVIDER_STATUS'
+  | 'LINK_CONFLICT'
+  | 'LINK_STATUS_CONFLICT';
+
+export class BillingEvidenceError extends BadRequestException {
+  constructor(readonly reason: BillingEvidenceReason) {
+    super('Billing evidence requires review');
+  }
+}
+
+export function requireBilling(
+  condition: unknown,
+  reason: BillingEvidenceReason = 'EVIDENCE_REJECTED',
+): asserts condition {
+  if (!condition) throw new BillingEvidenceError(reason);
 }
 
 export function validTransactionId(id: unknown): boolean {
@@ -33,29 +55,39 @@ export function checkProviderSubscription(
   expectedDomain: 'test' | 'live' = 'test',
 ) {
   requireBilling(
-    /^SUB_[A-Za-z0-9]+$/.test(code) &&
-      data.subscription_code === code &&
-      data.domain === expectedDomain &&
-      anchor.fulfilledAt &&
-      !anchor.deletedAt &&
-      anchor.providerPlanCode &&
+    /^SUB_[A-Za-z0-9]+$/.test(code) && data.subscription_code === code,
+    'SUBSCRIPTION_ID',
+  );
+  requireBilling(data.domain === expectedDomain, 'PROVIDER_DOMAIN');
+  requireBilling(anchor.fulfilledAt && !anchor.deletedAt, 'PAYMENT_ANCHOR');
+  requireBilling(
+    anchor.providerPlanCode &&
       data.plan?.plan_code === anchor.providerPlanCode &&
       anchor.billingCycle === 'yearly' &&
-      data.plan.interval === 'annually' &&
-      data.amount === anchor.expectedAmountKobo &&
-      data.plan.amount === anchor.expectedAmountKobo &&
-      data.plan.currency === anchor.currency &&
-      data.customer?.customer_code &&
-      data.customer?.email?.trim().toLowerCase() === anchor.expectedEmail &&
-      Number.isFinite(new Date(data.updatedAt).getTime()) &&
-      new Date(data.updatedAt).getTime() <= Date.now() + 300000 &&
-      [
-        'active',
-        'non-renewing',
-        'attention',
-        'cancelled',
-        'completed',
-      ].includes(data.status),
+      data.plan.interval === 'annually',
+    'PLAN_MISMATCH',
+  );
+  requireBilling(
+    data.amount === anchor.expectedAmountKobo &&
+      data.plan.amount === anchor.expectedAmountKobo,
+    'AMOUNT_MISMATCH',
+  );
+  requireBilling(data.plan.currency === anchor.currency, 'CURRENCY_MISMATCH');
+  requireBilling(
+    data.customer?.customer_code &&
+      data.customer?.email?.trim().toLowerCase() === anchor.expectedEmail,
+    'CUSTOMER_MISMATCH',
+  );
+  requireBilling(
+    Number.isFinite(new Date(data.updatedAt).getTime()) &&
+      new Date(data.updatedAt).getTime() <= Date.now() + 300000,
+    'PROVIDER_TIMESTAMP',
+  );
+  requireBilling(
+    ['active', 'non-renewing', 'attention', 'cancelled', 'completed'].includes(
+      data.status,
+    ),
+    'PROVIDER_STATUS',
   );
 }
 

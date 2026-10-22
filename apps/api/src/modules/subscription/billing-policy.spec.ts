@@ -2,6 +2,7 @@ import {
   checkInvoice,
   checkProviderSubscription,
   validTransactionId,
+  BillingEvidenceError,
 } from './billing-policy';
 import { Payment } from '@prisma/client';
 import { PaystackCharge, PaystackSubscription } from './paystack.service';
@@ -59,11 +60,44 @@ describe('Recurring billing evidence', () => {
     ).not.toThrow();
     expect(checkInvoice(invoice, charge, anchor, 'CUS_test').end).toEqual(end);
   });
+  it.each([
+    [{ domain: 'live' }, 'PROVIDER_DOMAIN'],
+    [{ amount: 1 }, 'AMOUNT_MISMATCH'],
+    [{ updatedAt: 'invalid' }, 'PROVIDER_TIMESTAMP'],
+    [
+      {
+        customer: { email: 'private@example.test', customer_code: 'CUS_other' },
+      },
+      'CUSTOMER_MISMATCH',
+    ],
+  ])(
+    'reports a fixed reason while preserving the generic public error',
+    (change, reason) => {
+      try {
+        checkProviderSubscription({ ...sub, ...change }, anchor, 'SUB_test');
+        throw new Error('Expected rejection');
+      } catch (error) {
+        expect(error).toBeInstanceOf(BillingEvidenceError);
+        const evidence = error as BillingEvidenceError;
+        expect(evidence.reason).toBe(reason);
+        expect(JSON.stringify(evidence.getResponse())).not.toContain(
+          'private@example.test',
+        );
+        expect(evidence.message).toBe('Billing evidence requires review');
+      }
+    },
+  );
   it('enforces payment-provider environment when linking recurring payments', () => {
     const live = { ...sub, domain: 'live' };
-    expect(() => checkProviderSubscription(live, anchor, 'SUB_test', 'live')).not.toThrow();
-    expect(() => checkProviderSubscription(live, anchor, 'SUB_test', 'test')).toThrow();
-    expect(() => checkProviderSubscription(sub, anchor, 'SUB_test', 'live')).toThrow();
+    expect(() =>
+      checkProviderSubscription(live, anchor, 'SUB_test', 'live'),
+    ).not.toThrow();
+    expect(() =>
+      checkProviderSubscription(live, anchor, 'SUB_test', 'test'),
+    ).toThrow();
+    expect(() =>
+      checkProviderSubscription(sub, anchor, 'SUB_test', 'live'),
+    ).toThrow();
   });
   it.each([null, 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, 'AUTH_test', '0'])(
     'rejects invalid transaction IDs %s',

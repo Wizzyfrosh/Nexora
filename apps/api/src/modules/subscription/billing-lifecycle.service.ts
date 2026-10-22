@@ -4,6 +4,8 @@ import { SubscriptionRepository } from './subscription.repository';
 import { PaystackService, PaystackSubscription } from './paystack.service';
 import {
   InvoiceEvidence,
+  BillingEvidenceError,
+  BillingEvidenceReason,
   requireBilling,
   validTransactionId,
 } from './billing-policy';
@@ -17,7 +19,12 @@ type RecoveryStage =
 
 // Static stages only: never retain the provider response, customer or token.
 export class BillingRecoveryError extends Error {
-  constructor(readonly stage: RecoveryStage) {
+  constructor(
+    readonly stage: RecoveryStage,
+    readonly reason:
+      | BillingEvidenceReason
+      | 'INTERNAL_FAILURE' = 'INTERNAL_FAILURE',
+  ) {
     super('Billing recovery failed at ' + stage);
   }
 }
@@ -38,8 +45,13 @@ export class BillingLifecycleService {
       return await this.processEvent(event, verifyInitial, (next) => {
         stage = next;
       });
-    } catch {
-      throw new BillingRecoveryError(stage);
+    } catch (error) {
+      throw new BillingRecoveryError(
+        stage,
+        error instanceof BillingEvidenceError
+          ? error.reason
+          : 'INTERNAL_FAILURE',
+      );
     }
   }
 

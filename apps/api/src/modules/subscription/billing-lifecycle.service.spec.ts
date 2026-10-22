@@ -48,7 +48,7 @@ describe('Billing recovery diagnostics', () => {
   it('identifies missing authoritative payment evidence without linking or granting access', async () => {
     const { service, repo } = setup();
     await expect(service.process(event, verify)).rejects.toEqual(
-      new BillingRecoveryError('PAYMENT_ANCHOR'),
+      new BillingRecoveryError('PAYMENT_ANCHOR', 'EVIDENCE_REJECTED'),
     );
     expect(repo.linkAndSync).not.toHaveBeenCalled();
   });
