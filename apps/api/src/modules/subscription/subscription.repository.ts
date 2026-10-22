@@ -173,6 +173,14 @@ export class SubscriptionRepository {
     });
   }
 
+  async hasReviewEvents(): Promise<boolean> {
+    // A bounded existence query keeps unresolved incidents visible across runs.
+    return (await this.prisma.paymentEvent.findFirst({
+      where: { status: 'REVIEW' },
+      select: { id: true },
+    })) !== null;
+  }
+
   claimEvent(id: string, now: Date) {
     return this.prisma.paymentEvent.updateMany({
       where: { id, status: 'PENDING', nextAttemptAt: { lte: now } },

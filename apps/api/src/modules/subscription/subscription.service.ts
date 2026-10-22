@@ -277,7 +277,9 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
           );
         }
       }
-      if (strict && (deferred || review))
+      // A previous invocation may already have quarantined an event. Keep cron
+      // failure notifications active until an operator resolves that incident.
+      if (strict && (deferred || review || await this.subRepo.hasReviewEvents()))
         throw new Error('Billing recovery requires operator attention');
     } catch {
       this.logger.error('Billing recovery unavailable or requires review; durable records retained');

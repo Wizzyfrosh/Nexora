@@ -1,5 +1,26 @@
 # Nexora — database migration and billing recovery release
 
+## 22 October release follow-up
+
+The production migration completed in Actions run `39697159486` (including ledger
+and schema-diff checks). Earlier statements below about an empty production schema
+are historical. Render production reports commit `93d056e7` live; independent HTTP
+readiness remains unverified after a timed-out probe.
+
+The scheduled command now exits nonzero while any durable REVIEW event remains,
+including events quarantined by a previous invocation. A successful run therefore
+cannot clear an alert simply because REVIEW events are excluded from the due batch.
+Operators must inspect the protected inbox, establish provider evidence, and use a
+reviewed resolution process; do not bulk-mark incidents DONE to silence monitoring.
+
+No cron has been purchased or deployed. The prepared configuration is: Frankfurt,
+reviewed Nexora release branch, `*/5 * * * *` UTC, build command
+`npm ci --include=dev && npm run build --workspace @nexora/shared-types && npm exec --workspace api -- prisma generate --schema prisma/schema.prisma && npm run build --workspace api`,
+start command `npm run billing:recover --workspace api`, `BILLING_WORKER_MODE=scheduled`,
+and private matching Neon/Paystack configuration. Require an actual failed-run
+notification acceptance before switching the web API away from in-process recovery.
+Paid hosting approval and genuine provider acceptance remain prerequisites.
+
 ## Verified incident (20 October 2026)
 
 Preview API deployment at commit `8254c821` built successfully but failed to start. Logs show `Prisma P1002` waiting to acquire PostgreSQL migration advisory lock through a `-pooler` Neon hostname. Preview's seven migrations are already recorded as finished; the production Neon database is still empty. The previous working preview API continued serving an older revision.

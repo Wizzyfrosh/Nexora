@@ -1,5 +1,39 @@
 # Verification report — 15 October 2026
 
+## Scheduled billing review monitoring — 22 October 2026
+
+- `npm ci --ignore-scripts --no-audit --no-fund`: passed (locked dependencies).
+- Shared-types build, Prisma generation with a nonconnecting build URL, and API
+  Nest build: passed.
+- `npm run test --workspace api -- --runInBand`: 251 tests in 21 suites passed.
+  New cases cover unresolved review records surviving later invocations, recovery
+  after resolution, and review-query database failure. No real provider was called.
+- `node --test scripts/guard-db-release.test.mjs`: 5 tests passed.
+- `git diff --check`: passed.
+- PostgreSQL integration regression extends the exhausted-retry test to require
+  failure on a later scheduled pass while leaving the quarantined row unchanged.
+  Execution is delegated to the existing disposable PostgreSQL CI job; no local
+  PostgreSQL server is installed. No production data is used.
+- Connected GitHub confirms production migration run `39697159486`, attempt 2,
+  including apply, ledger verification and zero-diff verification, succeeded.
+- Render production deploy `dep-dbcld0qvcj2c73f1vk70` is live at `93d056e7`.
+  A direct HTTP readiness request timed out; it is not a readiness pass.
+- Fresh Vercel preview `dpl_WUoWcKhcgAqoqMCAwAB2MsNdtN2g` is READY at the exact
+  Nexora main commit `93d056e7`. Its proxied `/api/v1/ready` initially returned
+  application HTTP 404, demonstrating the preview API still served an older build.
+  A deploy of the reviewed main branch to the separate preview API was requested.
+- Render preview deployment `dep-dbcreqivcj2c73fkh8ag` subsequently became live at
+  `93d056e7`. The same protected preview HTTP request then returned 200 with
+  `data.status=ready`, verifying the preview rewrite and schema readiness together.
+- Nexora's public-domain alias still references successful Nexora commit `24c81b23`.
+  Latest failed Vercel attempts cloned MeChat and failed because `apps/web` was
+  absent. No root-directory workaround or frontend production cutover was made.
+- Scheduler provisioning, alerts, actual Paystack sandbox payments, inbox/media
+  acceptance, migration-approval reset and production readiness remain open.
+- Publishing this local source/documentation change to the public repository was
+  blocked by automatic approval review pending explicit payload authorization.
+  The added PostgreSQL regression has therefore not yet run in CI.
+
 ## Verification codes — 18 October 2026
 
 - API Prisma generation, shared-types build, Nest build and Next production build passed locally. 220 unit tests in 18 suites passed.

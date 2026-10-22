@@ -1,5 +1,37 @@
 # Current implementation audit
 
+## Launch follow-up (22 October 2026)
+
+Production schema release is no longer pending: Actions run `39697159486`, job
+`Neon production: apply`, succeeded on retry, including the post-apply migration
+ledger and schema-diff checks. Render production deployment `dep-dbcld0qvcj2c73f1vk70`
+is live at reviewed commit `93d056e7`. The direct HTTP readiness probe timed out;
+deployment status alone does not close API acceptance. Earlier entries below are
+historical and do not override these results.
+
+Scheduled billing recovery now checks for unresolved REVIEW events from earlier
+runs before reporting success. It continues processing the bounded due batch and
+does not automatically retry quarantined records. Unit and PostgreSQL regression
+coverage is recorded in VERIFICATION.md. Hosting and failure-notification delivery
+still require acceptance; no scheduled Render service exists yet.
+
+Vercel's custom domain still resolves to Nexora deployment `dpl_JCgREekm9SW9d1kwvYs6sV3cugv4`
+(commit `24c81b23`). Two later failed attempts referenced MeChat source, which lacks
+Nexora's `apps/web` directory. Do not change Nexora's root directory to accommodate
+another repository. A fresh Nexora preview is pinned explicitly to `93d056e7`.
+No production frontend cutover, paid hosting purchase, live payment enablement or
+public publishing enablement is part of this follow-up.
+
+The separate preview API was then deployed to `93d056e7` (Render deployment
+`dep-dbcreqivcj2c73fkh8ag`, live). The fresh Vercel preview's proxied
+`GET /api/v1/ready` now returns HTTP 200 with `data.status=ready`. This closes the
+preview routing/schema readiness check; production HTTP readiness remains open.
+
+Remaining launch gates: disable the one-time migration approval variable, verify
+production readiness over HTTP, approve reliable hosting/scheduler costs, configure
+and test scheduler alerts, complete genuine Paystack sandbox and inbox/media/
+storefront acceptance, then perform the reviewed frontend production cutover.
+
 ## Hosted preview follow-up (18 October 2026)
 
 Verification-code follow-up replaces email verification links with authenticated six-digit codes, keyed account-bound digests, a ten-minute expiry, five durable attempts, and branded HTML/plain-text email. The new screen supports paste/autofill, resend cooldown and success/errors. Migration retires pending verification links only; password resets retain their existing flow. Hosted inbox acceptance remains required.
