@@ -3,6 +3,7 @@ import {
   checkProviderSubscription,
   validTransactionId,
   BillingEvidenceError,
+  providerSubscriptionUpdatedAt,
 } from './billing-policy';
 import { Payment } from '@prisma/client';
 import { PaystackCharge, PaystackSubscription } from './paystack.service';
@@ -60,10 +61,47 @@ describe('Recurring billing evidence', () => {
     ).not.toThrow();
     expect(checkInvoice(invoice, charge, anchor, 'CUS_test').end).toEqual(end);
   });
+  it('uses the same provider instant for camel and snake case timestamps', () => {
+    const snake = { ...sub, updatedAt: undefined, updated_at: sub.updatedAt };
+    expect(providerSubscriptionUpdatedAt(snake)).toEqual(
+      new Date(sub.updatedAt!),
+    );
+    expect(() =>
+      checkProviderSubscription(snake, anchor, 'SUB_test'),
+    ).not.toThrow();
+    expect(
+      providerSubscriptionUpdatedAt({ ...sub, updated_at: sub.updatedAt }),
+    ).toEqual(new Date(sub.updatedAt!));
+  });
+  it.each([
+    [{ updatedAt: undefined }, 'PROVIDER_TIMESTAMP_MISSING'],
+    [{ updatedAt: null }, 'PROVIDER_TIMESTAMP_MISSING'],
+    [{ updatedAt: '2026-01-01T12:00:00' }, 'PROVIDER_TIMESTAMP_INVALID'],
+    [{ updatedAt: 123 }, 'PROVIDER_TIMESTAMP_INVALID'],
+    [
+      { updatedAt: new Date(Date.now() + 600000).toISOString() },
+      'PROVIDER_TIMESTAMP_FUTURE',
+    ],
+    [{ updated_at: '2020-01-01T00:00:00Z' }, 'PROVIDER_TIMESTAMP_CONFLICT'],
+  ])(
+    'rejects unsafe timestamp representations without substituting local time',
+    (change, reason) => {
+      try {
+        providerSubscriptionUpdatedAt({
+          ...sub,
+          ...change,
+        } as PaystackSubscription);
+        throw new Error('Expected rejection');
+      } catch (error) {
+        expect(error).toBeInstanceOf(BillingEvidenceError);
+        expect((error as BillingEvidenceError).reason).toBe(reason);
+      }
+    },
+  );
   it.each([
     [{ domain: 'live' }, 'PROVIDER_DOMAIN'],
     [{ amount: 1 }, 'AMOUNT_MISMATCH'],
-    [{ updatedAt: 'invalid' }, 'PROVIDER_TIMESTAMP'],
+    [{ updatedAt: 'invalid' }, 'PROVIDER_TIMESTAMP_INVALID'],
     [
       {
         customer: { email: 'private@example.test', customer_code: 'CUS_other' },

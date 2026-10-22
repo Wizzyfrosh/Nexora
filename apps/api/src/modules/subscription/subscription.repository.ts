@@ -12,6 +12,7 @@ import {
   checkProviderSubscription,
   checkInvoice,
   requireBilling,
+  providerSubscriptionUpdatedAt,
 } from './billing-policy';
 
 @Injectable()
@@ -253,7 +254,7 @@ export class SubscriptionRepository {
           sub.paystackCustomerId === provider.customer.customer_code,
         'LINK_CONFLICT',
       );
-      const updated = new Date(provider.updatedAt);
+      const updated = providerSubscriptionUpdatedAt(provider);
       if (sub.providerStatusUpdatedAt && sub.providerStatusUpdatedAt > updated)
         return sub;
       if (sub.providerStatusUpdatedAt?.getTime() === updated.getTime()) {
