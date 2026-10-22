@@ -53,6 +53,7 @@ describe('Subscription purchase policy', () => {
       receiveEvent: jest.fn(),
       expire: jest.fn(),
       dueEvents: jest.fn().mockResolvedValue([]),
+      hasReviewEvents: jest.fn().mockResolvedValue(false),
       claimEvent: jest.fn().mockResolvedValue({ count: 1 }),
       finishEvent: jest.fn(),
       retryEvent: jest.fn(),
@@ -110,6 +111,20 @@ describe('Subscription purchase policy', () => {
   });
   it('surfaces database failures to the scheduled worker', async () => {
     repo.expire.mockRejectedValue(new Error('database unavailable'));
+    await expect(service.recoverPendingEvents(true))
+      .rejects.toThrow('Billing recovery failed');
+  });
+  it('keeps scheduled runs failing while earlier manual-review events remain', async () => {
+    repo.hasReviewEvents.mockResolvedValue(true);
+    await expect(service.recoverPendingEvents(true))
+      .rejects.toThrow('Billing recovery failed');
+    expect(repo.finishEvent).not.toHaveBeenCalled();
+    expect(repo.retryEvent).not.toHaveBeenCalled();
+    repo.hasReviewEvents.mockResolvedValue(false);
+    await expect(service.recoverPendingEvents(true)).resolves.toBeUndefined();
+  });
+  it('does not report a healthy scheduled pass when review inspection fails', async () => {
+    repo.hasReviewEvents.mockRejectedValue(new Error('database unavailable'));
     await expect(service.recoverPendingEvents(true))
       .rejects.toThrow('Billing recovery failed');
   });

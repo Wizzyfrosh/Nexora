@@ -607,6 +607,12 @@ describe('Billing on isolated PostgreSQL (only provider transport mocked)', () =
     });
     expect(event.attempts).toBe(8);
     expect(event.status).toBe('REVIEW');
+    expect(await repo.hasReviewEvents()).toBe(true);
+    // A later process/run must still fail even though REVIEW is not a due event.
+    await expect(service.recoverPendingEvents(true))
+      .rejects.toThrow('Billing recovery failed');
+    expect(await prisma.paymentEvent.findUniqueOrThrow({ where: { id } }))
+      .toEqual(event);
   });
 
   it('handles simultaneous redirect and webhook once, including later replay', async () => {
