@@ -2,6 +2,23 @@
 
 ## Production integration — 22 October 2026
 
+- PR #25 merged after CI run `39861053027` passed both jobs, including disposable
+  PostgreSQL security tests, migration drift checks and compiled worker probes.
+- Vercel production deployment `dpl_GNGFBn1AAf1pdnDaasDTqgsk8UA5`, source
+  `214cdac0c1fe340f68745beb42577f39461348e6`, is READY and owns the custom domain.
+  The automatic Git deployment started before a duplicate API request hit the
+  daily deployment quota; the quota did not prevent the automatic build.
+- Ordinary anonymous HTTPS requests to the custom domain return 200 for
+  `/register`, `/dashboard/appearance`, `/api/v1/ready`, `/api/v1/storefronts/sitemap`
+  and `/sitemap.xml`; `/api/v1/auth/me` correctly returns 401. Dashboard HTML is
+  a client shell, not evidence of authenticated owner access. API responses use
+  `private, no-store` cache policy.
+- Connected Neon confirms the production media bucket `nexora-public` exists and
+  storage is enabled on the production branch. This is configuration evidence,
+  not a successful real image upload/read/delete test.
+- All 251 API unit tests passed locally. PRs #13 and #14 are closed as superseded;
+  the useful onboarding work is included in #25.
+
 - Production `/api/v1/ready` returned success with `data.status=ready` in an HTTPS
   browser request; free-tier cold start initially displayed Render wake-up UI.
 - `npm run build`: shared types, Nest API and Next production builds passed.

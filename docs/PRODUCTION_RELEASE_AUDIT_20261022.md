@@ -1,6 +1,17 @@
 # Nexora production release readiness audit — 22 October 2026
 
-## Verified with connected systems
+## Subsequent release update
+
+The numbered audit below is historical. Production migration run `39697159486`
+attempt 2 subsequently passed apply, ledger and zero-diff checks. All seven
+migrations are now applied. Production HTTPS readiness passes, and Vercel
+production deployment `dpl_GNGFBn1AAf1pdnDaasDTqgsk8UA5` serves `214cdac0` through
+the canonical domain using the separate production API upstream. See CURRENT_STATE.md
+and VERIFICATION.md for the current evidence and remaining provider/hosting gates.
+The one-time migration approval variable still needs operator reset; connected
+GitHub tools do not expose environment-variable administration.
+
+## Verified with connected systems (earlier snapshot)
 
 1. GitHub Actions `39517889418`, `Neon rehearsal: apply` — completed successfully. All seven unmodified Prisma migrations applied through Prisma CLI; post-apply Prisma status and diff checks passed.
 2. Neon project `purple-night-06010146`, branch `br-shy-breeze-bah4byat` — `_prisma_migrations` contains seven finished, non-rolled-back rows. Rehearsal database has 23 application tables, 249 columns, 93 indexes, 20 foreign keys and 8 enum types.
