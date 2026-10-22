@@ -269,7 +269,7 @@ export class SubscriptionRepository {
           WHERE id = ${anchor.subscriptionId} AND xmin::text = ${snapshotVersion}
             AND "deletedAt" IS NULL
         `;
-        requireBilling(claimed === 1, 'LINK_CONFLICT');
+        requireBilling(claimed === 1, 'SNAPSHOT_CONFLICT');
       }
       const sub = await tx.subscription.update({
         where: {

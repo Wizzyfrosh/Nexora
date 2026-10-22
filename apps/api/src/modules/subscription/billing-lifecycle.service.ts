@@ -41,18 +41,29 @@ export class BillingLifecycleService {
     verifyInitial: (reference: string) => Promise<void>,
   ): Promise<boolean> {
     let stage: RecoveryStage = 'PROVIDER_READ';
-    try {
-      return await this.processEvent(event, verifyInitial, (next) => {
-        stage = next;
-      });
-    } catch (error) {
-      throw new BillingRecoveryError(
-        stage,
-        error instanceof BillingEvidenceError
-          ? error.reason
-          : 'INTERNAL_FAILURE',
-      );
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await this.processEvent(event, verifyInitial, (next) => {
+          stage = next;
+        });
+      } catch (error) {
+        // A competing sync or invoice can change the row during the provider read.
+        // Retry only this transient conflict, always fetching fresh state again.
+        if (
+          error instanceof BillingEvidenceError &&
+          error.reason === 'SNAPSHOT_CONFLICT' &&
+          attempt < 2
+        )
+          continue;
+        throw new BillingRecoveryError(
+          stage,
+          error instanceof BillingEvidenceError
+            ? error.reason
+            : 'INTERNAL_FAILURE',
+        );
+      }
     }
+    throw new BillingRecoveryError(stage);
   }
 
   private async processEvent(

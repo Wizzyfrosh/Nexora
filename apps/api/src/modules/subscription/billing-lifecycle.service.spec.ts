@@ -5,6 +5,7 @@ import {
 } from './billing-lifecycle.service';
 import { SubscriptionRepository } from './subscription.repository';
 import { PaystackService } from './paystack.service';
+import { BillingEvidenceError } from './billing-policy';
 
 describe('Billing recovery diagnostics', () => {
   const event = {
@@ -63,5 +64,38 @@ describe('Billing recovery diagnostics', () => {
     await expect(service.process(event, verify)).rejects.toEqual(
       new BillingRecoveryError('SUBSCRIPTION_LINK'),
     );
+  });
+  it('re-reads the provider after a transient snapshot conflict', async () => {
+    const { service, repo, provider } = setup();
+    repo.findLinked.mockResolvedValue({
+      billingAnchorPayment: { fulfilledAt: new Date() },
+    });
+    repo.linkAndSync
+      .mockRejectedValueOnce(new BillingEvidenceError('SNAPSHOT_CONFLICT'))
+      .mockResolvedValue(undefined);
+    await expect(service.process(event, verify)).resolves.toBe(true);
+    expect(provider.fetchSubscription).toHaveBeenCalledTimes(2);
+    expect(repo.subscriptionSnapshotVersion).toHaveBeenCalledTimes(2);
+  });
+  it('bounds conflicts and leaves permanent policy errors to durable review', async () => {
+    const { service, repo, provider } = setup();
+    repo.findLinked.mockResolvedValue({
+      billingAnchorPayment: { fulfilledAt: new Date() },
+    });
+    repo.linkAndSync.mockRejectedValue(
+      new BillingEvidenceError('SNAPSHOT_CONFLICT'),
+    );
+    await expect(service.process(event, verify)).rejects.toMatchObject({
+      reason: 'SNAPSHOT_CONFLICT',
+    });
+    expect(provider.fetchSubscription).toHaveBeenCalledTimes(3);
+    provider.fetchSubscription.mockClear();
+    repo.linkAndSync.mockRejectedValue(
+      new BillingEvidenceError('CUSTOMER_MISMATCH'),
+    );
+    await expect(service.process(event, verify)).rejects.toMatchObject({
+      reason: 'CUSTOMER_MISMATCH',
+    });
+    expect(provider.fetchSubscription).toHaveBeenCalledTimes(1);
   });
 });

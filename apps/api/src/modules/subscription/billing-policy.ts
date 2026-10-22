@@ -30,6 +30,7 @@ export type BillingEvidenceReason =
   | 'PROVIDER_TIMESTAMP_CONFLICT'
   | 'PROVIDER_STATUS'
   | 'LINK_CONFLICT'
+  | 'SNAPSHOT_CONFLICT'
   | 'LINK_STATUS_CONFLICT';
 
 export class BillingEvidenceError extends BadRequestException {

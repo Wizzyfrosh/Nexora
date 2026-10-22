@@ -9,7 +9,9 @@ alone was insufficient and is not presented as a successful provider fix.
 
 Timestamp-free linking now requires a fresh provider read bound to a short-lived
 PostgreSQL row-version token. A conditional write rejects any intervening local
-subscription update; the network request remains outside the transaction. The
+subscription update; the network request remains outside the transaction. Only
+transient snapshot conflicts receive up to three fresh-read attempts before
+durable deferral; permanent policy failures are not retried within that pass. The
 initial link uses a second provider read after exact transaction identity is
 established. Subsequent linked reads need one provider fetch. Provided timestamps
 still undergo format/future/conflict checks and stale snapshot rejection. Missing

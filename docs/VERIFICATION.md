@@ -5,9 +5,13 @@
 - The real preview retry under ccf2f626 logged PROVIDER_TIMESTAMP_MISSING and
   quarantined the event at attempt 8. Paid Basic expiry and one fulfilled payment
   were verified unchanged before and after that attempt.
-- API build, 266 unit tests in 22 suites, targeted source ESLint and diff checks
+- API build, 268 unit tests in 22 suites, targeted source ESLint and diff checks
   passed. Missing timestamps require explicit guarded mode; malformed provided
   timestamps still fail in guarded mode.
+- Initial CI 39867784052 passed 125 of 126 PostgreSQL tests; concurrent duplicate
+  invoice processing exposed a transient snapshot conflict. The lifecycle now
+  performs up to three fresh-read attempts only for that explicit conflict. Two
+  unit regressions verify fresh reads, the bound and no retry for permanent errors.
 - Disposable PostgreSQL regression covers missing-timestamp initial linking,
   strict rejection without a token, two competing writes with one winner, stale
   token reuse, unchanged expiry and one payment. Full execution is delegated to CI.
