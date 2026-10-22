@@ -1,5 +1,35 @@
 # Verification report — 15 October 2026
 
+## Production integration — 22 October 2026
+
+- Production `/api/v1/ready` returned success with `data.status=ready` in an HTTPS
+  browser request; free-tier cold start initially displayed Render wake-up UI.
+- `npm run build`: shared types, Nest API and Next production builds passed.
+- Targeted AuthContext ESLint and `git diff --check` passed after integrating
+  OTP navigation and guarding the initial asynchronous profile result on unmount.
+- No production account was impersonated or sandbox payment copied. Provider
+  inbox/media operations and production authenticated owner acceptance remain open.
+
+## Appearance deployment correction — 22 October 2026
+
+- The account associated with the fulfilled Basic sandbox purchase is BASIC,
+  ACTIVE, email verified, and entitled through 22 October 2027. Renewal linkage
+  is independently UNLINKED; it is not a prerequisite for Basic template selection.
+- Before correction, Vercel resolved the custom domain to `dpl_JCgREekm9SW9d1kwvYs6sV3cugv4`
+  (`24c81b23`), whose Appearance component lacked the newer gallery.
+- Reviewed replacement `dpl_WUoWcKhcgAqoqMCAwAB2MsNdtN2g` (`93d056e7`) was READY;
+  its proxied API readiness returned HTTP 200 before assigning the custom alias.
+- After assignment, the domain resolves to that replacement. Both
+  `/dashboard/appearance` and `/api/v1/ready` return HTTP 200. The referenced
+  Appearance JavaScript chunk returns 200 and contains all four Basic design
+  names, the new gallery heading and Save this design control.
+- `npm run test --workspace api -- --runInBand website-theme-entitlement.spec.ts storefront.spec.ts`:
+  40 tests across two suites passed. Premium restrictions remain enforced.
+- This verifies deployed assets, routing and access-policy regressions. No signed-in
+  owner browser session was available, so actual owner save acceptance remains open.
+- No customer content, subscription tier, database schema, live-checkout flag or
+  public-publishing flag was changed by this correction.
+
 ## Scheduled billing review monitoring — 22 October 2026
 
 - `npm ci --ignore-scripts --no-audit --no-fund`: passed (locked dependencies).
@@ -33,6 +63,7 @@
 - Publishing this local source/documentation change to the public repository was
   blocked by automatic approval review pending explicit payload authorization.
   The added PostgreSQL regression has therefore not yet run in CI.
+
 
 ## Verification codes — 18 October 2026
 

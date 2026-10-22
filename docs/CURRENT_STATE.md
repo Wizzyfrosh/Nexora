@@ -1,5 +1,44 @@
 # Current implementation audit
 
+## Production integration — 22 October 2026
+
+The owner explicitly authorized merging and deploying the remaining reviewed work.
+PR #24 is merged. OTP onboarding is integrated from PR #13, with the initial
+profile read using asynchronous completion callbacks and unmount protection.
+The older PR #14 is superseded by current rollout guards and Neon media storage;
+its Cloudinary configuration must not replace the current implementation.
+
+The production API returned `data.status=ready` over HTTPS after waking from
+free-tier sleep. Its seven migrations are applied; it has no sandbox accounts,
+payments or plans. Vercel production now has its own API_UPSTREAM_URL pointing
+to the production Render API and SITE_URL set to the custom domain. A new
+production build is required to activate those settings. Preview remains separate.
+
+Live charging, public publishing and analytics remain disabled. Inbox delivery,
+production media operations, recurring-provider linkage and reliable scheduler/
+alert hosting still need acceptance. A production deployment does not close them.
+Earlier status entries below are historical snapshots.
+
+## Appearance deployment correction — 22 October 2026
+
+A successful Basic sandbox payment had granted annual access, but the custom
+domain still served frontend commit `24c81b23` from 18 October, which lacked the
+new template gallery. The domain `nexora.froshcodeorbit.site` now points to READY
+Nexora deployment `dpl_WUoWcKhcgAqoqMCAwAB2MsNdtN2g`, commit `93d056e7`, using
+the existing preview API. This was an alias correction to a previously built and
+reviewed frontend, with no schema, plan, payment or publication flag changes.
+
+The domain's Appearance route and API readiness both return HTTP 200. Its served
+JavaScript contains the gallery, all four Basic design names and the Save this
+design control. Basic covers Nexora Signature, Atelier Minimal, Botanical Studio
+and The Editorial; five Premium designs retain their plan restrictions. Forty
+targeted template/storefront tests passed. Saving from the owner's authenticated
+browser still requires acceptance; no owner session was impersonated.
+
+Sandbox initial purchase and annual entitlement are recorded. Recurring linkage
+remains UNLINKED with a pending subscription.create event, so renewal/cancellation
+acceptance is still open. Live charging and public publication remain disabled.
+
 ## Launch follow-up (22 October 2026)
 
 Production schema release is no longer pending: Actions run `39697159486`, job
@@ -31,6 +70,7 @@ Remaining launch gates: disable the one-time migration approval variable, verify
 production readiness over HTTP, approve reliable hosting/scheduler costs, configure
 and test scheduler alerts, complete genuine Paystack sandbox and inbox/media/
 storefront acceptance, then perform the reviewed frontend production cutover.
+
 
 ## Hosted preview follow-up (18 October 2026)
 
