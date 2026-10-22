@@ -1,5 +1,16 @@
 # Verification report — 15 October 2026
 
+## Recurring-link evidence reasons — 22 October 2026
+
+- API build, 258 tests across 22 suites, targeted source ESLint and diff checks
+  passed. Tests assert fixed diagnostic reasons and generic public errors for
+  provider domain, amount, timestamp and customer mismatches. Existing recurring
+  rejection, replay and entitlement tests remain in place. No real provider is
+  called by unit tests.
+- Owner screenshot confirms the one-time migration approval variable is false.
+- Preview event is PENDING at attempt 6 and last failed at SUBSCRIPTION_LINK.
+  No attempts were reset and no REVIEW record was retried by this source change.
+
 ## Operational diagnostics — 22 October 2026
 
 - Shared-types build, Prisma generation, API build and 254 unit tests across

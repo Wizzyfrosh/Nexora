@@ -278,7 +278,7 @@ export class SubscriptionService implements OnModuleInit, OnModuleDestroy {
           this.logger.warn(
             'Payment event deferred at ' +
               (error instanceof BillingRecoveryError
-                ? error.stage
+                ? error.stage + '/' + error.reason
                 : 'INITIAL_VERIFICATION_OR_INTERNAL') +
               '; inspect pending/review inbox',
           );

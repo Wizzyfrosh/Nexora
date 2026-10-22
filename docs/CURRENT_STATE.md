@@ -1,5 +1,18 @@
 # Current implementation audit
 
+## Recurring-link investigation — 22 October 2026
+
+The owner screenshot confirms NEXORA_MIGRATE_APPROVED=false; the migration
+approval item is closed based on that evidence. No browser reset is required.
+
+Preview recovery reaches SUBSCRIPTION_LINK, so provider fetch and an exact paid
+anchor lookup complete before the failure. The event remains PENDING at attempt 6.
+Policy failures now identify a fixed reason without returning or logging raw
+provider values. All existing identity, environment, amount, currency, plan,
+customer, timestamp and transaction checks remain enforced. This is diagnostic
+evidence, not proof that renewal or cancellation works. A controlled retry can
+advance a PENDING event due time without resetting attempts or touching REVIEW.
+
 ## Operational acceptance follow-up — 22 October 2026
 
 Preview outbox evidence records two VERIFY emails as SENT on their first attempt.

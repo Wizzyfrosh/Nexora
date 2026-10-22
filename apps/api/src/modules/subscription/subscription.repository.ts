@@ -251,6 +251,7 @@ export class SubscriptionRepository {
             sub.billingAnchorPaymentId === anchor.id) &&
           sub.plan === saved.purchasedPlan &&
           sub.paystackCustomerId === provider.customer.customer_code,
+        'LINK_CONFLICT',
       );
       const updated = new Date(provider.updatedAt);
       if (sub.providerStatusUpdatedAt && sub.providerStatusUpdatedAt > updated)
@@ -259,6 +260,7 @@ export class SubscriptionRepository {
         requireBilling(
           sub.renewalStatus === provider.status ||
             sub.renewalStatus === 'CANCEL_REQUESTED',
+          'LINK_STATUS_CONFLICT',
         );
       }
       return tx.subscription.update({
