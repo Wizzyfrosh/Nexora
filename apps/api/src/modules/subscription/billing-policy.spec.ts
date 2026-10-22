@@ -73,6 +73,19 @@ describe('Recurring billing evidence', () => {
       providerSubscriptionUpdatedAt({ ...sub, updated_at: sub.updatedAt }),
     ).toEqual(new Date(sub.updatedAt!));
   });
+  it('permits an absent timestamp only for an explicitly version-guarded read', () => {
+    const absent = { ...sub, updatedAt: undefined };
+    expect(() => checkProviderSubscription(absent, anchor, 'SUB_test')).toThrow(
+      'requires review',
+    );
+    expect(() =>
+      checkProviderSubscription(absent, anchor, 'SUB_test', 'test', true),
+    ).not.toThrow();
+    expect(providerSubscriptionUpdatedAt(absent, true)).toBeNull();
+    expect(() =>
+      providerSubscriptionUpdatedAt({ ...absent, updated_at: 'invalid' }, true),
+    ).toThrow('requires review');
+  });
   it.each([
     [{ updatedAt: undefined }, 'PROVIDER_TIMESTAMP_MISSING'],
     [{ updatedAt: null }, 'PROVIDER_TIMESTAMP_MISSING'],

@@ -1,5 +1,26 @@
 # Current implementation audit
 
+## Timestamp-free provider reads — 22 October 2026
+
+The real Paystack response supplies neither updatedAt nor updated_at. The
+controlled attempt reached REVIEW at attempt 8 with PROVIDER_TIMESTAMP_MISSING;
+one fulfilled Basic payment and its paid expiry remain unchanged. Alias parsing
+alone was insufficient and is not presented as a successful provider fix.
+
+Timestamp-free linking now requires a fresh provider read bound to a short-lived
+PostgreSQL row-version token. A conditional write rejects any intervening local
+subscription update; the network request remains outside the transaction. Only
+transient snapshot conflicts receive up to three fresh-read attempts before
+durable deferral; permanent policy failures are not retried within that pass. The
+initial link uses a second provider read after exact transaction identity is
+established. Subsequent linked reads need one provider fetch. Provided timestamps
+still undergo format/future/conflict checks and stale snapshot rejection. Missing
+timestamps are not replaced with local time. No database migration is needed.
+
+After CI and preview deployment, a reviewed operator may requeue only the known
+REVIEW event once, retain attempts, and append the defect/fix reference to its
+billingData. This is not automatic REVIEW retry or a bulk inbox reset.
+
 ## Provider timestamp compatibility — 22 October 2026
 
 A controlled retry of the single preview PENDING event reported

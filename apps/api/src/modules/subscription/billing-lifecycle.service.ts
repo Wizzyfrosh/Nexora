@@ -41,18 +41,29 @@ export class BillingLifecycleService {
     verifyInitial: (reference: string) => Promise<void>,
   ): Promise<boolean> {
     let stage: RecoveryStage = 'PROVIDER_READ';
-    try {
-      return await this.processEvent(event, verifyInitial, (next) => {
-        stage = next;
-      });
-    } catch (error) {
-      throw new BillingRecoveryError(
-        stage,
-        error instanceof BillingEvidenceError
-          ? error.reason
-          : 'INTERNAL_FAILURE',
-      );
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await this.processEvent(event, verifyInitial, (next) => {
+          stage = next;
+        });
+      } catch (error) {
+        // A competing sync or invoice can change the row during the provider read.
+        // Retry only this transient conflict, always fetching fresh state again.
+        if (
+          error instanceof BillingEvidenceError &&
+          error.reason === 'SNAPSHOT_CONFLICT' &&
+          attempt < 2
+        )
+          continue;
+        throw new BillingRecoveryError(
+          stage,
+          error instanceof BillingEvidenceError
+            ? error.reason
+            : 'INTERNAL_FAILURE',
+        );
+      }
     }
+    throw new BillingRecoveryError(stage);
   }
 
   private async processEvent(
@@ -76,11 +87,14 @@ export class BillingLifecycleService {
     const evidence = event.billingData as unknown as InvoiceEvidence;
     const code = evidence.subscriptionCode || event.providerObjectId;
     if (!code || !/^SUB_[A-Za-z0-9]+$/.test(code)) return false;
-    const { data } = await this.provider.fetchSubscription(code);
-    requireBilling(data.subscription_code === code);
-    stage('PAYMENT_ANCHOR');
     const linked = await this.repo.findLinked(code);
     let anchor = linked?.billingAnchorPayment;
+    let version = anchor
+      ? await this.repo.subscriptionSnapshotVersion(anchor)
+      : undefined;
+    let { data } = await this.provider.fetchSubscription(code);
+    requireBilling(data.subscription_code === code);
+    stage('PAYMENT_ANCHOR');
     if (!anchor) {
       // A signed invoice can prove the exact original reference; no email/plan guessing.
       if (evidence.reference) {
@@ -100,9 +114,18 @@ export class BillingLifecycleService {
         );
       }
       requireBilling(anchor?.fulfilledAt);
+      // The first read discovered identity. Bind a fresh read to the local version.
+      version = await this.repo.subscriptionSnapshotVersion(anchor);
+      ({ data } = await this.provider.fetchSubscription(code));
+      requireBilling(data.subscription_code === code);
     }
     stage('SUBSCRIPTION_LINK');
-    await this.repo.linkAndSync(anchor, data, this.provider.expectedDomain());
+    await this.repo.linkAndSync(
+      anchor,
+      data,
+      this.provider.expectedDomain(),
+      version,
+    );
     if (event.event === 'subscription.cancel') {
       stage('PROVIDER_CANCELLATION');
       if (['active', 'attention'].includes(data.status)) {
