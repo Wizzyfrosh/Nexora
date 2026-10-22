@@ -1,5 +1,20 @@
 # Verification report — 15 October 2026
 
+## Timestamp-free concurrency protection — 22 October 2026
+
+- The real preview retry under ccf2f626 logged PROVIDER_TIMESTAMP_MISSING and
+  quarantined the event at attempt 8. Paid Basic expiry and one fulfilled payment
+  were verified unchanged before and after that attempt.
+- API build, 266 unit tests in 22 suites, targeted source ESLint and diff checks
+  passed. Missing timestamps require explicit guarded mode; malformed provided
+  timestamps still fail in guarded mode.
+- Disposable PostgreSQL regression covers missing-timestamp initial linking,
+  strict rejection without a token, two competing writes with one winner, stale
+  token reuse, unchanged expiry and one payment. Full execution is delegated to CI.
+- xmin is used only for the duration of the bounded provider request, never as a
+  persisted identity or public value. Provider requests do not hold a database
+  transaction open. No real provider renewal or cancellation is claimed.
+
 ## Provider timestamp compatibility — 22 October 2026
 
 - API build, 265 unit tests in 22 suites, timestamp-source ESLint and diff checks

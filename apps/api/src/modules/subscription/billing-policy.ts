@@ -54,10 +54,12 @@ export function validTransactionId(id: unknown): boolean {
 
 export function providerSubscriptionUpdatedAt(
   data: PaystackSubscription,
-): Date {
+  allowMissing = false,
+): Date | null {
   const values: unknown[] = [data.updatedAt, data.updated_at].filter(
     (value) => value !== undefined && value !== null,
   );
+  if (values.length === 0 && allowMissing) return null;
   requireBilling(values.length > 0, 'PROVIDER_TIMESTAMP_MISSING');
   const dates = values.map((value) => {
     // An explicit offset prevents the server's timezone from changing ordering.
@@ -91,6 +93,7 @@ export function checkProviderSubscription(
   anchor: Payment,
   code: string,
   expectedDomain: 'test' | 'live' = 'test',
+  allowMissingTimestamp = false,
 ) {
   requireBilling(
     /^SUB_[A-Za-z0-9]+$/.test(code) && data.subscription_code === code,
@@ -116,7 +119,7 @@ export function checkProviderSubscription(
       data.customer?.email?.trim().toLowerCase() === anchor.expectedEmail,
     'CUSTOMER_MISMATCH',
   );
-  providerSubscriptionUpdatedAt(data);
+  providerSubscriptionUpdatedAt(data, allowMissingTimestamp);
   requireBilling(
     ['active', 'non-renewing', 'attention', 'cancelled', 'completed'].includes(
       data.status,

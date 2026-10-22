@@ -55,7 +55,7 @@ describe('Billing on isolated PostgreSQL (only provider transport mocked)', () =
       .expect(200);
     return createHash('sha256').update(raw).digest('hex');
   }
-  async function agreement(timestampStyle: 'camel' | 'snake' = 'camel') {
+  async function agreement(timestampStyle: 'camel' | 'snake' | 'missing' = 'camel') {
     const initial = await purchase();
     await service.verifyPayment(ownerId, initial.reference);
     const start = new Date(initial.paid_at),
@@ -88,6 +88,7 @@ describe('Billing on isolated PostgreSQL (only provider transport mocked)', () =
       data.updated_at = data.updatedAt;
       delete data.updatedAt;
     }
+    if (timestampStyle === 'missing') delete data.updatedAt;
     agreements.set(data.subscription_code, data);
     await sendEvent('subscription.create', {
       subscription_code: data.subscription_code,
@@ -266,6 +267,28 @@ describe('Billing on isolated PostgreSQL (only provider transport mocked)', () =
   });
   afterAll(async () => {
     if (app) await app.close();
+  });
+
+  it('links timestamp-free snapshots only with a fresh row version and rejects stale writes', async () => {
+    const data = await agreement('missing');
+    const linked = await repo.findLinked(data.subscription_code);
+    const anchor = linked!.billingAnchorPayment!;
+    const expiry = linked!.currentPeriodEnd;
+    expect(linked!.providerStatusUpdatedAt).toBeNull();
+    await expect(repo.linkAndSync(anchor, data)).rejects.toThrow('requires review');
+    const version = await repo.subscriptionSnapshotVersion(anchor);
+    const results = await Promise.allSettled([
+      repo.linkAndSync(anchor, { ...data, status: 'non-renewing' }, 'test', version),
+      repo.linkAndSync(anchor, { ...data, status: 'attention' }, 'test', version),
+    ]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
+    const saved = await repo.findLinked(data.subscription_code);
+    const winner = saved!.renewalStatus;
+    await expect(repo.linkAndSync(anchor, data, 'test', version)).rejects.toThrow('requires review');
+    expect((await repo.findLinked(data.subscription_code))!.renewalStatus).toBe(winner);
+    expect(saved!.currentPeriodEnd).toEqual(expiry);
+    expect(await prisma.payment.count({ where: { subscriptionId: subId } })).toBe(1);
   });
 
   it('links a snake-case provider timestamp and still rejects an older provider snapshot', async () => {

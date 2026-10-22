@@ -23,9 +23,16 @@ export class SubscriptionRepository {
     return this.prisma.payment.findMany({
       where: { subscription: { businessId, deletedAt: null }, deletedAt: null },
       select: {
-        paystackReference: true, paystackStatus: true, amountNgn: true,
-        currency: true, purchasedPlan: true, paidAt: true,
-        coverageStart: true, coverageEnd: true, createdAt: true, fulfilledAt: true,
+        paystackReference: true,
+        paystackStatus: true,
+        amountNgn: true,
+        currency: true,
+        purchasedPlan: true,
+        paidAt: true,
+        coverageStart: true,
+        coverageEnd: true,
+        createdAt: true,
+        fulfilledAt: true,
       },
       orderBy: { createdAt: 'desc' },
       take: 20,
@@ -176,10 +183,12 @@ export class SubscriptionRepository {
 
   async hasReviewEvents(): Promise<boolean> {
     // A bounded existence query keeps unresolved incidents visible across runs.
-    return (await this.prisma.paymentEvent.findFirst({
-      where: { status: 'REVIEW' },
-      select: { id: true },
-    })) !== null;
+    return (
+      (await this.prisma.paymentEvent.findFirst({
+        where: { status: 'REVIEW' },
+        select: { id: true },
+      })) !== null
+    );
   }
 
   claimEvent(id: string, now: Date) {
@@ -226,13 +235,42 @@ export class SubscriptionRepository {
     });
   }
 
+  async subscriptionSnapshotVersion(anchor: Payment) {
+    // Short-lived optimistic token only; never persist xmin as an identity.
+    const rows = await this.prisma.$queryRaw<Array<{ version: string }>>`
+      SELECT xmin::text AS version FROM subscriptions
+      WHERE id = ${anchor.subscriptionId} AND "deletedAt" IS NULL
+    `;
+    requireBilling(rows[0]?.version, 'LINK_CONFLICT');
+    return rows[0].version;
+  }
+
   async linkAndSync(
     anchor: Payment,
     provider: PaystackSubscription,
     expectedDomain: 'test' | 'live' = 'test',
+    snapshotVersion?: string,
   ) {
-    checkProviderSubscription(provider, anchor, provider.subscription_code, expectedDomain);
+    const guarded = snapshotVersion !== undefined;
+    if (guarded)
+      requireBilling(/^\d{1,10}$/.test(snapshotVersion), 'LINK_CONFLICT');
+    checkProviderSubscription(
+      provider,
+      anchor,
+      provider.subscription_code,
+      expectedDomain,
+      guarded,
+    );
     return this.prisma.$transaction(async (tx) => {
+      if (guarded) {
+        // No network call or long-lived row lock inside this transaction.
+        const claimed = await tx.$executeRaw`
+          UPDATE subscriptions SET "updatedAt" = "updatedAt"
+          WHERE id = ${anchor.subscriptionId} AND xmin::text = ${snapshotVersion}
+            AND "deletedAt" IS NULL
+        `;
+        requireBilling(claimed === 1, 'LINK_CONFLICT');
+      }
       const sub = await tx.subscription.update({
         where: {
           id: anchor.subscriptionId,
@@ -244,7 +282,13 @@ export class SubscriptionRepository {
       const saved = await tx.payment.findUniqueOrThrow({
         where: { id: anchor.id },
       });
-      checkProviderSubscription(provider, saved, provider.subscription_code, expectedDomain);
+      checkProviderSubscription(
+        provider,
+        saved,
+        provider.subscription_code,
+        expectedDomain,
+        guarded,
+      );
       requireBilling(
         (!sub.paystackSubscriptionId ||
           sub.paystackSubscriptionId === provider.subscription_code) &&
@@ -254,10 +298,17 @@ export class SubscriptionRepository {
           sub.paystackCustomerId === provider.customer.customer_code,
         'LINK_CONFLICT',
       );
-      const updated = providerSubscriptionUpdatedAt(provider);
-      if (sub.providerStatusUpdatedAt && sub.providerStatusUpdatedAt > updated)
+      const updated = providerSubscriptionUpdatedAt(provider, guarded);
+      if (
+        updated &&
+        sub.providerStatusUpdatedAt &&
+        sub.providerStatusUpdatedAt > updated
+      )
         return sub;
-      if (sub.providerStatusUpdatedAt?.getTime() === updated.getTime()) {
+      if (
+        updated &&
+        sub.providerStatusUpdatedAt?.getTime() === updated.getTime()
+      ) {
         requireBilling(
           sub.renewalStatus === provider.status ||
             sub.renewalStatus === 'CANCEL_REQUESTED',
@@ -273,7 +324,7 @@ export class SubscriptionRepository {
             sub.cancelRequestedAt && provider.status === 'active'
               ? 'CANCEL_REQUESTED'
               : provider.status,
-          providerStatusUpdatedAt: updated,
+          providerStatusUpdatedAt: updated ?? sub.providerStatusUpdatedAt,
           cancelRequestedAt: [
             'non-renewing',
             'cancelled',

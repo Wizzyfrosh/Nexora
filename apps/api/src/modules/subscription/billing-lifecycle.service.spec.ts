@@ -18,6 +18,7 @@ describe('Billing recovery diagnostics', () => {
     const repo = {
       findLinked: jest.fn().mockResolvedValue(null),
       linkAndSync: jest.fn(),
+      subscriptionSnapshotVersion: jest.fn().mockResolvedValue('123'),
     };
     const provider = {
       fetchSubscription: jest
